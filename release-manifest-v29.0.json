@@ -1,10 +1,10 @@
 {
   "version": "29.0.0-OMEGA-SINGULARITY",
   "packageName": "codevalai-sovereign-rubicon-core-v29.0.zip",
-  "byteLength": 49956,
+  "byteLength": 50090,
   "filesPackaged": 46,
-  "crc32Hex": "0x85762db5",
-  "sha256Hex": "0xd63db7e33d51bb2684af98006d5a74324072803c1a6b5207f24799860e98c10b",
-  "mldsa65DetachedSignature": "0xmldsa65_5abc442d66795514a0310f67f6ce36d918e57db9a37ac61c7b5a0a2c63c20b20f9c71ca2b8a8ad38ea098aaf4810d515",
-  "timestamp": "2026-11-10T02:39:19.503Z"
+  "crc32Hex": "0x42c75366",
+  "sha256Hex": "0xd3e292295b54742d644b031ab6227c232ebb0d0cf3139072d1f1188466f027a1",
+  "mldsa65DetachedSignature": "0xmldsa65_f3fe109854438266dcd1295ea9a898caaac0d3b656970f79f60d8f26ae7a8c1af16226e32f5203d9cec8cd817f40203f",
+  "timestamp": "2026-11-10T16:07:48.196Z"
 }

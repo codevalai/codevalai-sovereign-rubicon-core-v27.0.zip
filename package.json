@@ -9,7 +9,11 @@
     "start": "tsx server.ts",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "verify:mldsa": "tsx scripts/verify-v29-singularity.ts",
+    "test:crypto:hybrid": "tsx scripts/verify-hdc-zkml-invariants.ts",
+    "test:swarm:pbft": "tsx scripts/verify-v30-expansion.ts",
+    "kernel-checkpoint-compact": "tsx scripts/export-sovereign-release-zip.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
