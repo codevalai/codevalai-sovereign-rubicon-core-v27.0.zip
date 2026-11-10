@@ -37,6 +37,7 @@ export interface SovereignReleaseManifestV26 {
 
 export class SovereignReleaseExporter {
   public static readonly CORE_FILES: readonly string[] = [
+    'README.md',
     'include/SovereignOmegaOrchestratorV26.ts',
     'include/SovereignBiniusTowerProver.ts',
     'include/SovereignMersenne31CircleStark.ts',
@@ -248,47 +249,8 @@ export class SovereignReleaseExporter {
       content: gitPackSuite.bitmapBuffer,
     });
 
-    const readmeMd = `\`\`\`
-       ___l_                 ___   __  ____      _ ____                  
-      / __/ /__  ___ ___ ____/ _ | /  |/  _/  #   (_) __/  #   v27.0-OMEGA 
-     _\\ \\/ / _ \\/ -_|_-<(_-< / __ |/ /|_/ /   ### / /\\ \\  ###  TOWER-FIBONACCI
-    /___/_/\\___/\\__/___/___/_/ |_/_/  /_/   #####/_/___/#####  HA-PPY-10240b
-\`\`\`
-
-# The Sovereign Lattice & GitVM Command Center (\`codevalai/sovereign-rubicon-core\` v27.0-HYPER-OMEGA)
-
-Welcome to the **Hyper-Omega Absolute Singularity v27.0** release of \`codevalai/sovereign-rubicon-core\`. This repository unifies an **8-Stage Deterministic Closed-Loop State Machine**, **Binius GF(2^128) Wiedemann Binary-Tower Prover**, **Mersenne-31 Circle STARK**, **Post-Quantum Ring-SIS LatticeFold**, **HaPPY [[5, 1, 3]] Nilpotent Bijection**, **Exact Z[tau] Fibonacci Anyonic Braiding**, and **Bare-Metal Git Packfile v2 / MIDX / BITM Binary Synthesis**.
-
-## 8-Stage Deterministic Closed-Loop Orchestrator (\`SovereignOmegaOrchestratorV26\`)
-
-1. **Stage 1 (\`/dev/vacuum\` Toeplitz Extractor)**: Circulant Leftover Hash Lemma extraction over GF(2)^10240 computing empirical Shannon entropy, min-entropy ($H_\\infty$), $\\chi^2$ uniformity, and SHAKE-256 seeds.
-2. **Stage 2 (Dehornoy Braid Canonicalizer + Exact $\\mathbb{Z}[\\tau]$ Markov Trace)**: Free-group cancellation and Yang-Baxter handle reduction paired with exact algebraic arithmetic in the golden ring $\\mathbb{Z}[\\tau]$ ($\\tau^2 = \\tau + 1$), eliminating trace degeneracy (\`6 + 4·τ\`).
-3. **Stage 3 (CXL 3.0 Slab Store + MIDX Fanout + Roaring/UINT32 Bitmap Filter)**: 64-byte cacheline-aligned 1,280-byte commit hypervector slabs with 256-entry \`OIDF\` fanout indexing and vectorized 32-bit reachability filtering.
-4. **Stage 4 (WebGPU / Unrolled 320-Word 10,240-Bit HDC & 1.58-Bit Ternary Sweep)**: Evaluates reachable subgraph hypervectors via 4-way unrolled SWAR popcount and dual-plane bit-sliced ternary dot products.
-5. **Stage 5 (HaPPY \`[[5, 1, 3]]\` Holographic Bulk Recovery via Nilpotent Bijection)**: Replaces singular cyclic rotation with the unitriangular operator $I + S_L$ over $\\mathbb{F}_2^{32}$ and its exact 5-step nilpotent geometric series inverse $(I + S_L)^{-1}$.
-6. **Stage 6 (Binius $\\mathbb{F}_{2^{128}}$ Wiedemann Binary-Tower Prover & Reversible 12-Bit LUT Codec)**: Recursive Wiedemann tower field multiplication, in-place Radix-2 Additive Cantor NTT, and lossless 12-bit Git commit header dictionary compression.
-7. **Stage 7 (Mersenne-31 Circle STARK \`SovereignMersenne31CircleStark\`)**: Branchless modular arithmetic mod $p = 2^{31} - 1$, stereographic projection onto $C(\\mathbb{M}_{31})$, and Twin-Coset Circle FRI folding.
-8. **Stage 8 (Post-Quantum Ring-SIS \`LatticeFold\` & Bare-Metal Git Binary Pack Synthesizer)**: Cooley-Tukey NTT over $\\mathbb{Z}_{3329}[X]/(X^{256}+1)$ Ajtai commitment and byte-exact synthesis of \`PACK\\x00\\x00\\x00\\x02\`, \`\\xFFtOc\`, \`MIDX\`, and \`BITM\`.
-
-## Quickstart & GitHub Publishing
-
-\`\`\`bash
-git init
-git branch -M main
-git add .
-git commit -m "feat(omega-v27.0): unify 8-stage closed loop, Binius GF(2^128), M31 Circle STARK, Ring-SIS LatticeFold, and Git Packfile binary synthesizer"
-git remote add origin https://github.com/codevalai/sovereign-rubicon-core.git
-git push -u origin +refs/heads/main
-\`\`\`
-`;
-
     filesToBundle.push({
-      path: 'sovereign-rubicon-core/README.md',
-      content: Buffer.from(readmeMd, 'utf8'),
-    });
-
-    filesToBundle.push({
-      path: 'sovereign-rubicon-core/RELEASE_MANIFEST_V27_0.json',
+      path: 'sovereign-rubicon-core/RELEASE_MANIFEST_V28_0.json',
       content: Buffer.from(JSON.stringify(manifest, null, 2), 'utf8'),
     });
 

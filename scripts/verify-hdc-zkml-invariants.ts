@@ -148,12 +148,12 @@ async function verifyHdcZkmlAndLiveCloneInvariants() {
     `[11/12] SovereignOmegaOrchestratorV26 8-Stage Closed Loop Verified: Z[tau]=${omega.stage2_braid.exactZTauTrace} | HaPPY=${omega.stage5_happyRecovery.status} | Binius=${omega.stage6_biniusAndLut.biniusAccumulatorHex.slice(0, 18)}... | CircleSTARK_M31=${omega.stage7_circleStarkM31.traceMerkleCommitmentHex.slice(0, 18)}... | LatticeFold_R3329=${omega.stage8_latticeFoldAndGitPack.latticeFold.ajtaiCommitmentRootHex.slice(0, 18)}... (L_inf=${omega.stage8_latticeFoldAndGitPack.latticeFold.foldedWitnessInfNorm}) | GitPACK=${omega.stage8_latticeFoldAndGitPack.gitBinaryPack.packByteLength}B | Total=${omega.totalClosedLoopLatencyUs} us`
   );
 
-  // [12/12] SovereignReleaseExporter 30-File Monorepo Manifest + 8 @codevalai/* OG GitHub Libraries
+  // [12/12] SovereignReleaseExporter 31-File Monorepo Manifest + README.md + 8 @codevalai/* OG GitHub Libraries
   const manifest = SovereignReleaseExporter.buildReleaseManifest();
   const missingFiles = manifest.entries.filter((e) => !e.verifiedOnDisk);
-  if (manifest.totalFiles !== 30 || missingFiles.length > 0) {
+  if (manifest.totalFiles !== 31 || missingFiles.length > 0) {
     throw new Error(
-      `Release manifest incomplete (${manifest.totalFiles}/30 files, missing: ${missingFiles.map((m) => m.relativePath).join(', ')})`
+      `Release manifest incomplete (${manifest.totalFiles}/31 files, missing: ${missingFiles.map((m) => m.relativePath).join(', ')})`
     );
   }
   const ogLibs = rubicon.getOGGitHubLibraries();
@@ -165,7 +165,7 @@ async function verifyHdcZkmlAndLiveCloneInvariants() {
     throw new Error('Single OG Library PKZIP magic mismatch.');
   }
   console.log(
-    `[12/12] SovereignReleaseExporter v28.0 & 8 OG GitHub Libraries Verified: ${manifest.totalFiles}/30 Files On Disk (${manifest.totalUncompressedBytes} bytes) | OG Libraries=${ogLibs.length}/8 (@codevalai/*) | SingleLibZip=${singleLibZip.zipBuffer.length}B | MerkleRoot=${manifest.merkleRootSha256Hex.slice(0, 24)}...`
+    `[12/12] SovereignReleaseExporter v28.0 & 8 OG GitHub Libraries Verified: ${manifest.totalFiles}/31 Files On Disk (${manifest.totalUncompressedBytes} bytes) | OG Libraries=${ogLibs.length}/8 (@codevalai/*) | SingleLibZip=${singleLibZip.zipBuffer.length}B | MerkleRoot=${manifest.merkleRootSha256Hex.slice(0, 24)}...`
   );
 
   sovereignEngine.stop();

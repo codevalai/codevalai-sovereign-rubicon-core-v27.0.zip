@@ -16,6 +16,7 @@ import {
   GitBranch,
   Terminal,
 } from 'lucide-react';
+import { SovereignInteractive3DReadme } from './SovereignInteractive3DReadme.js';
 
 interface OmniApexProps {
   onInspectMerkleLeaf?: (index: number) => void;
@@ -618,17 +619,20 @@ export const OmniApexHDC100View: React.FC<OmniApexProps> = ({ onInspectMerkleLea
               </span>
               <div className="mt-2 flex items-baseline">
                 <span className="text-2xl font-mono font-bold text-slate-900 dark:text-white tabular-nums">
-                  {releaseManifestV26?.totalFiles ?? 30}/{releaseManifestV26?.totalFiles ?? 30}
+                  {releaseManifestV26?.totalFiles ?? 31}/{releaseManifestV26?.totalFiles ?? 31}
                 </span>
                 <span className="text-xs font-mono text-slate-400 ml-1.5">
                   VERIFIED ON DISK
                 </span>
               </div>
               <span className="text-xs font-mono text-cyan-600 dark:text-cyan-400 mt-1 block tabular-nums truncate">
-                {((releaseManifestV26?.totalUncompressedBytes ?? 225000) / 1024).toFixed(1)} KB · CRC32 + SHA256 + ML-DSA-65
+                {((releaseManifestV26?.totalUncompressedBytes ?? 235000) / 1024).toFixed(1)} KB · CRC32 + SHA256 + ML-DSA-65
               </span>
             </div>
           </div>
+
+          {/* Interactive 3D Topological Lattice & World-Class GitHub README Showcase (CodeVal AI · Nicholas Brian) */}
+          <SovereignInteractive3DReadme />
 
           {/* Master 8-Stage Hyper-Omega v27.0 Closed-Loop State Machine Panel */}
           {latestOmega && (
