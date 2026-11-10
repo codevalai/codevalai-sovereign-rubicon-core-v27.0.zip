@@ -1038,6 +1038,61 @@ Existing SMT invariants: ${repo.reaAnalysis.smtInvariants.join(' ; ')}.`,
     }
   });
 
+  // v28.0 OG GitHub Libraries Monorepo Registry (@codevalai/* 8 Standalone Packages)
+  app.get('/api/rubicon/og-libraries', (req, res) => {
+    try {
+      const libraries = sovereignEngine.getRubiconKernel().getOGGitHubLibraries();
+      res.json({
+        version: '28.0.0-OG-GITHUB-LIBRARIES',
+        totalLibraries: libraries.length,
+        libraries,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // v28.0 Live OG GitHub Library SDK Self-Test & Benchmark Runner
+  app.post('/api/rubicon/og-libraries/test', (req, res) => {
+    try {
+      const libraryId = (req.body?.libraryId || 'binius-tower-128') as any;
+      const customParam = req.body?.customParam ? String(req.body.customParam) : undefined;
+      const receipt = sovereignEngine
+        .getRubiconKernel()
+        .executeOGLibrarySelfTest(libraryId, customParam);
+
+      const leaf = sovereignEngine.getEventFabric().publish('rubicon.og_library_self_test', {
+        libraryId,
+        customParam: customParam || 'DEFAULT',
+        packageName: (receipt as any).packageName,
+      });
+
+      res.json({
+        libraryId,
+        receipt,
+        merkleLeafIndex: leaf.index,
+      });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // v28.0 Export Single OG GitHub Library as Standalone GitHub Repo PKZIP Archive
+  app.get('/api/rubicon/og-libraries/export-zip/:libraryId', (req, res) => {
+    try {
+      const libraryId = (req.params.libraryId || 'binius-tower-128') as any;
+      const { filename, zipBuffer } = sovereignEngine
+        .getRubiconKernel()
+        .exportSingleOGLibraryZip(libraryId);
+
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(zipBuffer);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
   // Server-Side Gemini AI Strategist & Closed-Loop Auto-Pilot
   app.post('/api/gemini/strategize', async (req, res) => {
     try {

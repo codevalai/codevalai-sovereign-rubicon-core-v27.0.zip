@@ -26,6 +26,10 @@ import {
   SovereignReleaseExporter,
   SovereignReleaseManifestV26,
 } from './SovereignExportScriptV26.js';
+import {
+  SovereignGitHubLibrariesRegistry,
+  OGGitHubLibraryId,
+} from './SovereignGitHubLibrariesRegistry.js';
 
 export interface RubiconBenchmarkReceipt {
   benchmarkId: string;
@@ -463,18 +467,32 @@ git push -u origin +refs/heads/main
     return SovereignReleaseExporter.inspectManifestFile(relPath);
   }
 
+  public getOGGitHubLibraries() {
+    return SovereignGitHubLibrariesRegistry.getAllLibraries();
+  }
+
+  public executeOGLibrarySelfTest(id: OGGitHubLibraryId, customParam?: string) {
+    return SovereignGitHubLibrariesRegistry.executeLibrarySelfTest(id, customParam);
+  }
+
+  public exportSingleOGLibraryZip(id: OGGitHubLibraryId) {
+    return SovereignGitHubLibrariesRegistry.buildSingleLibraryGitHubZip(id);
+  }
+
   public getDiagnostics() {
     const releaseManifestV26 = SovereignReleaseExporter.buildReleaseManifest();
     const manifestPreview = SovereignReleaseExporter.CORE_FILES;
+    const ogGitHubLibraries = SovereignGitHubLibrariesRegistry.getAllLibraries();
 
     return {
       repositorySlug: 'codevalai/sovereign-rubicon-core',
-      version: '27.0.0',
+      version: '28.0.0',
       latestBenchmark: this.benchmarkHistory[0] || null,
       benchmarkHistory: this.benchmarkHistory,
       latestWgpuSweep: this.wgpuHypergrid.getLatestReport(),
       repositoryBlueprintFiles: manifestPreview,
       releaseManifestV26,
+      ogGitHubLibraries,
     };
   }
 }

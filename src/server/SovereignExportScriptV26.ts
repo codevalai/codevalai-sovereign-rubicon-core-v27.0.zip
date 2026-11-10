@@ -61,6 +61,15 @@ export class SovereignReleaseExporter {
     // Formal Verification Specifications
     'formal/SovereignNilpotentBijection.lean',
     'formal/SovereignDehornoyBraid.tla',
+    // 8 Standalone OG GitHub Library Packages (@codevalai/* Monorepo Suite)
+    'packages/libgit2-zero-pack/index.ts',
+    'packages/binius-tower-128/index.ts',
+    'packages/circle-stark-m31/index.ts',
+    'packages/latticefold-ringsis/index.ts',
+    'packages/happy-holographic-513/index.ts',
+    'packages/fibonacci-braid-ztau/index.ts',
+    'packages/hdc-bitnet-158/index.ts',
+    'packages/frontier-omni-suite/index.ts',
   ];
 
   // For modules that re-export from src/server/, read the full implementation file when inspecting or bundling
