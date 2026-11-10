@@ -39,6 +39,9 @@ export class SovereignReleaseExporter {
   public static readonly CORE_FILES: readonly string[] = [
     'README.md',
     'include/SovereignSingularityEngineV29.ts',
+    'include/SovereignExpansionFabricV30.ts',
+    'include/SovereignAgentParliamentV31.ts',
+    'include/SovereignSelfEvolvingEngineV32.ts',
     'include/SovereignOmegaOrchestratorV26.ts',
     'include/SovereignBiniusTowerProver.ts',
     'include/SovereignMersenne31CircleStark.ts',
@@ -81,6 +84,8 @@ export class SovereignReleaseExporter {
     'deploy/helm/sovereign-rubicon-core/values.yaml',
     'deploy/helm/sovereign-rubicon-core/templates/deployment.yaml',
     'scripts/verify-v29-singularity.ts',
+    'scripts/verify-v30-expansion.ts',
+    'scripts/verify-sovereign-singularity-master.ts',
     'scripts/export-sovereign-release-zip.ts',
   ];
 

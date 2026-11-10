@@ -147,6 +147,12 @@ export const SovereignInteractive3DReadme: React.FC<SovereignInteractive3DReadme
   const [v29Receipt, setV29Receipt] = useState<any | null>(null);
   const [runningV29, setRunningV29] = useState<boolean>(false);
 
+  const [v30Receipt, setV30Receipt] = useState<any | null>(null);
+  const [runningV30, setRunningV30] = useState<boolean>(false);
+
+  const [v32EvolutionReceipt, setV32EvolutionReceipt] = useState<any | null>(null);
+  const [runningV32, setRunningV32] = useState<boolean>(false);
+
   // Mutable ref bridge so React UI controls never recreate the WebGL context
   const stateRef = useRef({
     mode: 'HAPPY_513_BULK' as SpatialLatticeMode,
@@ -184,11 +190,55 @@ export const SovereignInteractive3DReadme: React.FC<SovereignInteractive3DReadme
     }
   };
 
+  const executeV30PlanetaryFabric = async () => {
+    setRunningV30(true);
+    try {
+      const res = await fetch('/api/rubicon/v30-expansion/execute', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setV30Receipt(data.receipt);
+      }
+    } catch {
+      // ignore transient network error
+    } finally {
+      setRunningV30(false);
+    }
+  };
+
+  const executeV32EvolutionaryMutation = async () => {
+    setRunningV32(true);
+    try {
+      const res = await fetch('/api/rubicon/v32-evolution/mutate', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setV32EvolutionReceipt(data.receipt);
+      }
+    } catch {
+      // ignore transient network error
+    } finally {
+      setRunningV32(false);
+    }
+  };
+
   useEffect(() => {
     fetch('/api/rubicon/v29-singularity/status')
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.receipt) setV29Receipt(d.receipt);
+      })
+      .catch(() => {});
+
+    fetch('/api/rubicon/v30-expansion/status')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.receipt) setV30Receipt(d.receipt);
+      })
+      .catch(() => {});
+
+    fetch('/api/rubicon/v32-evolution/status')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.receipt) setV32EvolutionReceipt(d.receipt);
       })
       .catch(() => {});
 
@@ -1034,6 +1084,141 @@ export const SovereignInteractive3DReadme: React.FC<SovereignInteractive3DReadme
             </div>
           </div>
         </div>
+      </div>
+
+      {/* PART 4: v30.0 PLANETARY-SCALE HYPER-COMPUTE EXPANSION FABRIC (ALL 20 PILLARS) */}
+      <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl p-6 space-y-5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+          <div>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Layers className="w-4 h-4 text-purple-500" />
+              v30.0 Planetary-Scale Expansion Fabric (All 20 Advanced Pillars · v30–v35 Roadmap)
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Unified hyper-compute fabric bridging bare-edge FPGA/ASIC synthesis, zero-knowledge mesh routing, Lean 4 formal verification, and interplanetary quantum swarms.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={executeV30PlanetaryFabric}
+              disabled={runningV30}
+              className="px-4 py-2 rounded-lg bg-purple-600 text-white font-mono text-xs font-bold hover:bg-purple-500 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+            >
+              {runningV30 ? 'Executing 20 Pillars...' : 'Execute v30.0 Planetary Fabric (20 Pillars)'}
+            </button>
+          </div>
+        </div>
+
+        {v30Receipt && (
+          <div className="space-y-3 font-mono text-xs">
+            <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-[#0B0E17] border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <span className="text-purple-600 dark:text-purple-400 font-bold">FABRIC ROOT MERKLE HASH:</span>{' '}
+                <span className="text-slate-900 dark:text-white">{v30Receipt.fabricMerkleRootHex}</span>
+              </div>
+              <div>
+                <span className="text-cyan-600 dark:text-cyan-400 font-bold">TOTAL LATENCY:</span>{' '}
+                <span className="text-slate-900 dark:text-white">{v30Receipt.totalFabricLatencyUs} μs</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5 max-h-[320px] overflow-auto pr-1">
+              {v30Receipt.pillars?.map((p: any) => (
+                <div key={p.pillarId} className="p-3 rounded-lg bg-slate-50 dark:bg-[#0B0E17] border border-slate-200 dark:border-slate-800 space-y-1">
+                  <div className="flex items-center justify-between text-[10px] text-slate-400">
+                    <span>Pillar #{p.pillarId}</span>
+                    <span className="text-emerald-400 font-semibold">{p.status}</span>
+                  </div>
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                    {p.title}
+                  </div>
+                  <div className="text-[11px] text-cyan-600 dark:text-cyan-400 truncate">
+                    {p.packageName}
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-mono">
+                    Metric: {p.metricValue} ({p.latencyUs} μs)
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* PART 5: v32.0 AUTONOMOUS SELF-EVOLVING SINGULARITY DAEMON */}
+      <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl p-6 space-y-5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+          <div>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Terminal className="w-4 h-4 text-emerald-400" />
+              v32.0 Autonomous Self-Evolving Singularity Daemon (Genetic Kernel Optimizer)
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Continuously mutates kernel closed-loop parameters (ternary thresholds, Cantor NTT folding depth, Toeplitz mixing) and evaluates fitness against Merkle audit spines.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={executeV32EvolutionaryMutation}
+              disabled={runningV32}
+              className="px-4 py-2 rounded-lg bg-emerald-600 text-white font-mono text-xs font-bold hover:bg-emerald-500 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+            >
+              {runningV32 ? 'Mutating Kernel...' : 'Trigger Evolutionary Mutation Step'}
+            </button>
+          </div>
+        </div>
+
+        {v32EvolutionReceipt && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 font-mono text-xs tabular-nums">
+            <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-[#0B0E17] border border-slate-200 dark:border-slate-800">
+              <div className="text-[10px] text-emerald-500 font-bold">
+                EVOLUTIONARY GENERATION
+              </div>
+              <div className="text-base font-bold text-slate-900 dark:text-white mt-1">
+                Gen #{v32EvolutionReceipt.generationId}
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                Fitness Score: {v32EvolutionReceipt.fitnessScore}% · Latency: {v32EvolutionReceipt.executionLatencyUs} μs
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-[#0B0E17] border border-slate-200 dark:border-slate-800">
+              <div className="text-[10px] text-cyan-500 font-bold">
+                MUTATED KERNEL PARAMS
+              </div>
+              <div className="text-base font-bold text-slate-900 dark:text-white mt-1">
+                Bias: {v32EvolutionReceipt.mutatedParameters?.ternaryBias} · Hamming: {v32EvolutionReceipt.mutatedParameters?.hammingThreshold}
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                Fold Depth: {v32EvolutionReceipt.mutatedParameters?.biniusFoldDepth} · Toeplitz: {v32EvolutionReceipt.mutatedParameters?.toeplitzMixingDegree}
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-[#0B0E17] border border-slate-200 dark:border-slate-800">
+              <div className="text-[10px] text-purple-400 font-bold">
+                MERKLE AUDIT SPINE ROOT
+              </div>
+              <div className="text-xs font-bold text-slate-900 dark:text-white mt-1 truncate">
+                {v32EvolutionReceipt.merkleAuditRootHex}
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 truncate">
+                Parent: {v32EvolutionReceipt.parentsFingerprintHex}
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-[#0B0E17] border border-slate-200 dark:border-slate-800">
+              <div className="text-[10px] text-amber-500 font-bold">
+                MUTATION SIGNATURE
+              </div>
+              <div className="text-xs font-bold text-slate-900 dark:text-white mt-1 truncate">
+                {v32EvolutionReceipt.mutationSignatureHex}
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                Status: ATTESTED_AND_LOCKED
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

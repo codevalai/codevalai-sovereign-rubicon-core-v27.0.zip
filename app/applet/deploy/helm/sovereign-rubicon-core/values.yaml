@@ -1,0 +1,35 @@
+replicaCount: 3
+
+image:
+  repository: ghcr.io/codevalai/sovereign-rubicon-core
+  pullPolicy: IfNotPresent
+  tag: "v32.0"
+
+service:
+  type: ClusterIP
+  port: 3000
+
+resources:
+  limits:
+    cpu: "4"
+    memory: "8Gi"
+    ephemeral-storage: "10Gi"
+  requests:
+    cpu: "1"
+    memory: "2Gi"
+    ephemeral-storage: "2Gi"
+
+securityContext:
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL

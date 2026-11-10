@@ -4,6 +4,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { sovereignEngine } from './src/server/sovereignKernel.js';
 import { SovereignSingularityEngineV29 } from './src/server/SovereignSingularityEngineV29.js';
+import { SovereignExpansionFabricV30 } from './src/server/SovereignExpansionFabricV30.js';
+import { SovereignSelfEvolvingEngineV32 } from './src/server/SovereignSelfEvolvingEngineV32.js';
 import { GoogleGenAI, Type } from '@google/genai';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1113,6 +1115,65 @@ Existing SMT invariants: ${repo.reaAnalysis.smtInvariants.join(' ; ')}.`,
         biniusTowerRootHex: receipt.biniusTowerRootHex.slice(0, 24),
         mldsa65SignatureHex: receipt.mldsa65SignatureHex.slice(0, 24),
         latencyUs: receipt.totalExecutionLatencyUs,
+      });
+
+      res.json({
+        receipt,
+        merkleLeafIndex: leaf.index,
+      });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // v30.0 Planetary-Scale Hyper-Compute Fabric (All 20 Expansion Pillars)
+  app.get('/api/rubicon/v30-expansion/status', (req, res) => {
+    try {
+      const receipt = SovereignExpansionFabricV30.executePlanetaryFabric();
+      res.json({ receipt });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/rubicon/v30-expansion/execute', (req, res) => {
+    try {
+      const receipt = SovereignExpansionFabricV30.executePlanetaryFabric();
+      const leaf = sovereignEngine.getEventFabric().publish('rubicon.v30_planetary_fabric_executed', {
+        version: receipt.version,
+        totalPillars: receipt.totalPillarsExecuted,
+        fabricMerkleRootHex: receipt.fabricMerkleRootHex.slice(0, 24),
+        totalLatencyUs: receipt.totalFabricLatencyUs,
+      });
+
+      res.json({
+        receipt,
+        merkleLeafIndex: leaf.index,
+      });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // v32.0 Autonomous Self-Evolving Singularity & Genetic Kernel Optimizer
+  app.get('/api/rubicon/v32-evolution/status', async (req, res) => {
+    try {
+      const receipt = await SovereignSelfEvolvingEngineV32.executeEvolutionaryStep();
+      res.json({ receipt });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/rubicon/v32-evolution/mutate', async (req, res) => {
+    try {
+      const customParams = req.body?.customParams;
+      const receipt = await SovereignSelfEvolvingEngineV32.executeEvolutionaryStep(customParams);
+      const leaf = sovereignEngine.getEventFabric().publish('rubicon.v32_evolutionary_mutation', {
+        generationId: receipt.generationId,
+        fitnessScore: receipt.fitnessScore,
+        merkleAuditRootHex: receipt.merkleAuditRootHex.slice(0, 24),
+        latencyUs: receipt.executionLatencyUs,
       });
 
       res.json({

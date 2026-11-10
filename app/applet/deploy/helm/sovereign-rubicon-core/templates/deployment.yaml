@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "sovereign-rubicon-core.fullname" . }}
+  namespace: sovereign-system
+  labels:
+    app.kubernetes.io/name: {{ include "sovereign-rubicon-core.name" . }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "sovereign-rubicon-core.name" . }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "sovereign-rubicon-core.name" . }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.securityContext.podSecurityContext | nindent 8 }}
+      containers:
+        - name: sovereign-runner
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext.containerSecurityContext | nindent 12 }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+              protocol: TCP
+              name: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: ephemeral-tmp
+              mounts: /tmp
+      volumes:
+        - name: ephemeral-tmp
+          emptyDir: {}
