@@ -1,0 +1,6 @@
+{
+  "name": "Sovereign Lattice & Swarm Control Center",
+  "description": "Post-Quantum Cryptographic & Autonomous Agent Parliament Command Center powered by SovereignKernel and Gemini AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

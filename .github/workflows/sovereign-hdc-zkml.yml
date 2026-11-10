@@ -1,0 +1,28 @@
+name: Sovereign HDC & zkML Verification Pipeline
+
+on:
+  push:
+    branches: [ "main", "hdc-zkml/*" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  verify-hdc-zkml:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Sovereign Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Execute HDC Hypervector, 1.58-Bit Ternary Weight, Live AST PKZIP & 100 Workflows Suite
+        run: npx tsx scripts/verify-hdc-zkml-invariants.ts

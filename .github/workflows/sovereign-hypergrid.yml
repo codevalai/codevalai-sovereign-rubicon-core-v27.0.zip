@@ -1,0 +1,83 @@
+name: Sovereign Hypergrid & GitVM Consensus Mesh
+
+on:
+  push:
+    branches: [ main, master, 'swarm/v*' ]
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+  pull_request:
+    branches: [ main, master ]
+  schedule:
+    - cron: '*/30 * * * *' # Continuous 30-minute autonomous invariant & BFT health sweep
+
+concurrency:
+  group: sovereign-hypergrid-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hypergrid-consensus:
+    name: GitVM & Post-Quantum Cryptographic Grid
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout Sovereign Repository (Deep Fetch)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Node.js Runtime & Caching
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install System Dependencies & Z3 Prover Binaries
+        run: |
+          sudo apt-get update && sudo apt-get install -y libz3-dev python3-z3 libgit2-dev
+          npm ci
+
+      - name: 1. Verify Git-to-Merkle Spine DAG Homomorphism
+        run: |
+          echo "Verifying cryptographic binding between Git commit DAG and Sovereign Merkle audit spine..."
+          npx tsx scripts/verify-dag-merkle-homomorphism.ts --head="${{ github.sha }}"
+
+      - name: 2. FIPS 204 ML-DSA-65 Post-Quantum Commit Signature Audit
+        env:
+          SOVEREIGN_ROOT_PUBKEY: ${{ secrets.SOVEREIGN_ROOT_ML_DSA_PUBKEY }}
+        run: |
+          echo "Validating post-quantum digital signatures on incoming swarm branch references..."
+          npm run verify:mldsa -- --ref="${{ github.ref }}" --pubkey="${{ secrets.SOVEREIGN_ROOT_ML_DSA_PUBKEY }}"
+
+      - name: 3. Z3 SMT Invariant & Satisfiability Stress Test
+        run: |
+          echo "Executing formal verification sweeps across backend kernel SMT solvers (Target Rigor >= 90%)..."
+          npx tsx scripts/verify-smt-invariants.ts --sandboxed --timeout=5000 --threshold=90
+
+      - name: 4. Hybrid X25519 + ML-KEM & HMAC Master Key Rotation Verification
+        run: |
+          echo "Testing HKDF-SHA3-512 joint encapsulation and 5-node Parliament HMAC epoch rotation..."
+          npm run test:crypto:hybrid
+
+      - name: 5. 5-Node Parliament Swarm PBFT Quorum & Circuit-Breaker Simulation
+        env:
+          AI_STUDIO_API_KEY: ${{ secrets.GOOGLE_AI_STUDIO_API_KEY }}
+        run: |
+          echo "Simulating Byzantine faults, node slashes, and automated watchdog recovery loops..."
+          npm run test:swarm:pbft
+
+      - name: 6. Autonomous Git-Native State Compaction & Checkpoint Commit
+        run: |
+          git config --global user.name "Sovereign-Kernel-Daemon"
+          git config --global user.email "daemon@sovereign.lattice"
+          echo "Appending automated Merkle checkpoint leaf and packing Git state..."
+          npx tsx scripts/kernel-checkpoint-compact.ts
+          git add .
+          git commit -m "chore(kernel): autonomous cryptographic checkpoint compaction [skip ci]" || echo "No changes to commit"
+          git push origin HEAD:${{ github.ref_name }} || echo "Push skipped or unprivileged"
