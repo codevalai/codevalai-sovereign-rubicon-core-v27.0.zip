@@ -1,0 +1,69 @@
+name: Sovereign Closed-Loop Swarm & Invariant Verification 24/7
+
+on:
+  schedule:
+    # Run automated invariant verification and swarm health checks every 30 minutes, 24/7/365
+    - cron: '*/30 * * * *'
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      debug_mode:
+        description: 'Enable verbose telemetry & WGPU simulation traces'
+        required: false
+        default: 'false'
+        type: boolean
+
+concurrency:
+  group: sovereign-closed-loop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sovereign-swarm-execution:
+    name: Sovereign 8-Stage Closed-Loop & Invariant Verifier
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Sovereign Rubicon-Core Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22.x & Corepack
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Monorepo & Standalone SDK Dependencies
+        run: |
+          npm ci
+
+      - name: Execute Stage 1-8 Closed-Loop Verification Suite
+        run: |
+          npx tsx scripts/verify-hdc-zkml-invariants.ts
+
+      - name: Execute v29.0 Hardware-Native WASM & ML-DSA-65 Enclave Verifier
+        run: |
+          npx tsx scripts/verify-v29-singularity.ts
+
+      - name: Execute Formal SMT Invariants & Merkle-DAG Homomorphism Suites
+        run: |
+          npx tsx scripts/verify-smt-invariants.ts
+          npx tsx scripts/verify-dag-merkle-homomorphism.ts
+
+      - name: Compile & Run Standalone @codevalai/* Package Self-Tests
+        run: |
+          npx tsx -e "
+            import { LibGit2ZeroPackSDK } from './packages/libgit2-zero-pack/index.ts';
+            import { MLDSAEnclaveSDK } from './packages/mldsa-enclave/index.ts';
+            console.log('Running OG Library Self-Tests across 24/7/365 CI pipeline...');
+            const receipt = LibGit2ZeroPackSDK.runSelfTest('CI-24/7-SWARM-EXECUTION');
+            const enclaveReceipt = MLDSAEnclaveSDK.runSelfTest('CI-24/7-ENCLAVE-VERIFICATION');
+            console.log('Package Self-Test Receipt:', JSON.stringify({ receipt, enclaveReceipt }, null, 2));
+          "
+
+      - name: Generate Cryptographic Release Archive & Verification Audit Report
+        run: |
+          npx tsx scripts/export-sovereign-release-zip.ts

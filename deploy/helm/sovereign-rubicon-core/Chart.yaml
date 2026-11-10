@@ -1,0 +1,21 @@
+apiVersion: v2
+name: sovereign-rubicon-core
+description: Sovereign Rubicon-Core v29.0-OMEGA-SINGULARITY — Zero-Floating-Point, Post-Quantum GitVM & 10,240-Bit Hyperdimensional Compute Engine
+type: application
+version: 29.0.0
+appVersion: "29.0.0-OMEGA-SINGULARITY"
+keywords:
+  - post-quantum
+  - binius-tower
+  - circle-stark
+  - gitvm
+  - hdc
+  - zero-floating-point
+  - ml-dsa-65
+maintainers:
+  - name: Nicholas Brian
+    email: nicholasbrianbn@gmail.com
+    url: https://github.com/codevalai
+home: https://github.com/codevalai/sovereign-rubicon-core
+sources:
+  - https://github.com/codevalai/sovereign-rubicon-core

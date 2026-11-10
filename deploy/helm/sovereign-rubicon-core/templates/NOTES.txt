@@ -1,0 +1,13 @@
+Sovereign Rubicon-Core v29.0-OMEGA-SINGULARITY has deployed successfully!
+
+Release Name: {{ .Release.Name }}
+Namespace:    {{ .Release.Namespace }}
+
+Check Pod status:
+  kubectl get pods -n {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "sovereign-rubicon.name" . }}"
+
+Access Command Center Locally:
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "sovereign-rubicon.fullname" . }} 3000:{{ .Values.service.port }}
+
+Telemetry & Cryptographic Verification:
+  curl http://localhost:3000/api/rubicon/export-zip -o release.zip

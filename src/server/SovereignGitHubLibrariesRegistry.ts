@@ -17,6 +17,7 @@ import { HaPPYHolographic513SDK } from '../../packages/happy-holographic-513/ind
 import { FibonacciBraidZTauSDK } from '../../packages/fibonacci-braid-ztau/index.js';
 import { HdcBitNet158SDK } from '../../packages/hdc-bitnet-158/index.js';
 import { FrontierOmniSuiteSDK } from '../../packages/frontier-omni-suite/index.js';
+import { MLDSAEnclaveSDK } from '../../packages/mldsa-enclave/index.js';
 
 export type OGGitHubLibraryId =
   | 'libgit2-zero-pack'
@@ -26,7 +27,8 @@ export type OGGitHubLibraryId =
   | 'happy-holographic-513'
   | 'fibonacci-braid-ztau'
   | 'hdc-bitnet-158'
-  | 'frontier-omni-suite';
+  | 'frontier-omni-suite'
+  | 'mldsa-enclave';
 
 export interface OGGitHubLibraryDescriptor {
   id: OGGitHubLibraryId;
@@ -283,6 +285,36 @@ console.log(hdc.dualPlaneTernaryScore, hdc.kanervaSdmReceipt.finalHammingDistanc
 const suite = FrontierOmniSuiteSDK.runSelfTest();
 console.log(suite.allInvariantsVerified, suite.yoshidaSymplecticOrbit.relativeEnergyDrift);`,
     },
+    {
+      id: 'mldsa-enclave',
+      packageName: '@codevalai/mldsa-enclave',
+      githubRepoSlug: 'codevalai/mldsa-enclave',
+      githubRepoUrl: 'https://github.com/codevalai/mldsa-enclave',
+      version: '28.0.0',
+      category: 'Post-Quantum FIPS 204 ML-DSA-65 Hardware Enclave',
+      tagline:
+        'NIST FIPS 204 ML-DSA-65 Module-Lattice Enclave over R_8380417 = Z_8380417[X]/(X^256 + 1) (zeta = 1753), Native WebAssembly (0x0061736d) JIT Kernel, and CXL 3.0 SharedArrayBuffer Atomics.',
+      entryPath: 'packages/mldsa-enclave/index.ts',
+      npmInstallCmd: 'npm install @codevalai/mldsa-enclave',
+      cargoCrateEquivalent: 'cargo add sovereign-mldsa-enclave',
+      exportedSymbols: [
+        'SovereignMLDSA65Enclave',
+        'SovereignSingularityEngineV29',
+        'MLDSAEnclaveSDK',
+        'MLDSA65_Q',
+        'MLDSA65_ZETA',
+      ],
+      mathematicalInvariants: [
+        'Exact NIST FIPS 204 modulus q = 8380417 = 2^23 - 2^13 + 1 with primitive 512-th root of unity zeta = 1753 (1753^256 ≡ -1 mod q)',
+        'Algebraic verification identity in R_8380417: A(zeta)*z(zeta) - c*t(zeta) ≡ w(zeta) (mod 8380417)',
+        'Rejection-sampled infinity norm bound ||z||_inf < gamma_1 - beta = 524,092',
+        'Native WebAssembly v1 binary kernel (0x0061736d) + CXL 3.0 SharedArrayBuffer Atomic Ring Buffer',
+      ],
+      quickstartCode: `import { MLDSAEnclaveSDK, SovereignSingularityEngineV29 } from '@codevalai/mldsa-enclave';
+
+const receipt = MLDSAEnclaveSDK.runSelfTest('FIPS-204-ML-DSA-65-SOVEREIGN-ANCHOR');
+console.log(receipt.verificationPassed, receipt.signatureDigestHex, receipt.responseInfinityNorm);`,
+    },
   ];
 
   public static executeLibrarySelfTest(
@@ -324,6 +356,10 @@ console.log(suite.allInvariantsVerified, suite.yoshidaSymplecticOrbit.relativeEn
       case 'hdc-bitnet-158':
         return HdcBitNet158SDK.runSelfTest(
           customParam || 'SovereignLatticeCore:v28.0'
+        ) as unknown as Record<string, unknown>;
+      case 'mldsa-enclave':
+        return MLDSAEnclaveSDK.runSelfTest(
+          customParam || 'FIPS-204-ML-DSA-65-SOVEREIGN-ANCHOR'
         ) as unknown as Record<string, unknown>;
       case 'frontier-omni-suite':
       default:

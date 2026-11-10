@@ -3,6 +3,7 @@ import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { sovereignEngine } from './src/server/sovereignKernel.js';
+import { SovereignSingularityEngineV29 } from './src/server/SovereignSingularityEngineV29.js';
 import { GoogleGenAI, Type } from '@google/genai';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1088,6 +1089,36 @@ Existing SMT invariants: ${repo.reaAnalysis.smtInvariants.join(' ; ')}.`,
       res.setHeader('Content-Type', 'application/zip');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.send(zipBuffer);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // v29.0 Omega-Singularity Hardware-Native Execution (Compiled WASM 0x0061736d + CXL 3.0 SharedArrayBuffer Atomics + FIPS 204 ML-DSA-65 Enclave)
+  app.get('/api/rubicon/v29-singularity/status', async (req, res) => {
+    try {
+      const receipt = await SovereignSingularityEngineV29.executeSingularityCycle();
+      res.json({ receipt });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/rubicon/v29-singularity/execute', async (req, res) => {
+    try {
+      const receipt = await SovereignSingularityEngineV29.executeSingularityCycle();
+      const leaf = sovereignEngine.getEventFabric().publish('rubicon.v29_singularity_executed', {
+        version: receipt.version,
+        wasmMagicHex: receipt.wasmKernelVerification.wasmMagicHex,
+        biniusTowerRootHex: receipt.biniusTowerRootHex.slice(0, 24),
+        mldsa65SignatureHex: receipt.mldsa65SignatureHex.slice(0, 24),
+        latencyUs: receipt.totalExecutionLatencyUs,
+      });
+
+      res.json({
+        receipt,
+        merkleLeafIndex: leaf.index,
+      });
     } catch (err: any) {
       res.status(400).json({ error: err.message });
     }

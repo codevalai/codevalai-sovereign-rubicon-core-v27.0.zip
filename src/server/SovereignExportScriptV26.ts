@@ -38,6 +38,7 @@ export interface SovereignReleaseManifestV26 {
 export class SovereignReleaseExporter {
   public static readonly CORE_FILES: readonly string[] = [
     'README.md',
+    'include/SovereignSingularityEngineV29.ts',
     'include/SovereignOmegaOrchestratorV26.ts',
     'include/SovereignBiniusTowerProver.ts',
     'include/SovereignMersenne31CircleStark.ts',
@@ -62,7 +63,7 @@ export class SovereignReleaseExporter {
     // Formal Verification Specifications
     'formal/SovereignNilpotentBijection.lean',
     'formal/SovereignDehornoyBraid.tla',
-    // 8 Standalone OG GitHub Library Packages (@codevalai/* Monorepo Suite)
+    // 9 Standalone OG GitHub Library Packages (@codevalai/* Monorepo Suite)
     'packages/libgit2-zero-pack/index.ts',
     'packages/binius-tower-128/index.ts',
     'packages/circle-stark-m31/index.ts',
@@ -71,6 +72,16 @@ export class SovereignReleaseExporter {
     'packages/fibonacci-braid-ztau/index.ts',
     'packages/hdc-bitnet-158/index.ts',
     'packages/frontier-omni-suite/index.ts',
+    'packages/mldsa-enclave/index.ts',
+    // 24/7/365 Autonomous Swarm CI/CD, Bare-Metal Docker, K8s & Helm 3 Chart
+    '.github/workflows/sovereign-closed-loop-swarm.yml',
+    'Dockerfile',
+    'sovereign-swarm-deployment.yaml',
+    'deploy/helm/sovereign-rubicon-core/Chart.yaml',
+    'deploy/helm/sovereign-rubicon-core/values.yaml',
+    'deploy/helm/sovereign-rubicon-core/templates/deployment.yaml',
+    'scripts/verify-v29-singularity.ts',
+    'scripts/export-sovereign-release-zip.ts',
   ];
 
   // For modules that re-export from src/server/, read the full implementation file when inspecting or bundling

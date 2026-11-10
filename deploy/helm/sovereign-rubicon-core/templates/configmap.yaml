@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "sovereign-rubicon.fullname" . }}-config
+  labels:
+    {{- include "sovereign-rubicon.labels" . | nindent 4 }}
+data:
+  PORT: {{ .Values.env.PORT | quote }}
+  NODE_ENV: {{ .Values.env.NODE_ENV | quote }}
+  SOVEREIGN_STRICT_INVARIANTS: {{ .Values.env.SOVEREIGN_STRICT_INVARIANTS | quote }}
+  CXL_SLAB_ADDRESS: {{ .Values.env.CXL_SLAB_ADDRESS | quote }}
+  NODE_OPTIONS: {{ .Values.env.NODE_OPTIONS | quote }}

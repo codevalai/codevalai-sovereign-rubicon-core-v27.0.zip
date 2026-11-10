@@ -1,0 +1,107 @@
+# ==============================================================================
+# Sovereign Rubicon-Core v29.0 Deployment Values
+# Target: Dedicated Bare-Metal Compute with WebGPU & CXL 3.0 Slab Emulation
+# ==============================================================================
+
+replicaCount: 3
+
+image:
+  repository: ghcr.io/codevalai/sovereign-rubicon-core
+  pullPolicy: IfNotPresent
+  tag: "v29.0.0-hyper-omega"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: "sovereign-rubicon-sa"
+
+podAnnotations:
+  sovereign.codevalai.org/closed-loop: "8-stage"
+  sovereign.codevalai.org/arithmetic: "zero-floating-point"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+  metricsPort: 9090
+
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations: {}
+  hosts:
+    - host: sovereign-lattice.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  limits:
+    cpu: "32"
+    memory: "64Gi"
+    hugepages-2Mi: "4Gi"
+  requests:
+    cpu: "8"
+    memory: "16Gi"
+    hugepages-2Mi: "2Gi"
+
+env:
+  PORT: "3000"
+  NODE_ENV: "production"
+  SOVEREIGN_STRICT_INVARIANTS: "true"
+  CXL_SLAB_ADDRESS: "0x00007ff8d4000000"
+  NODE_OPTIONS: "--max-old-space-size=16384 --enable-source-maps"
+
+probes:
+  liveness:
+    path: /api/rubicon/export-zip
+    initialDelaySeconds: 15
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readiness:
+    path: /api/rubicon/export-zip
+    initialDelaySeconds: 10
+    periodSeconds: 15
+    timeoutSeconds: 3
+    failureThreshold: 2
+
+nodeSelector:
+  node.kubernetes.io/instance-type: bare-metal-compute
+  topology.kubernetes.io/architecture: amd64
+
+tolerations:
+  - key: "sovereign.io/bare-metal"
+    operator: "Exists"
+    effect: "NoSchedule"
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - sovereign-rubicon-core
+          topologyKey: "kubernetes.io/hostname"
