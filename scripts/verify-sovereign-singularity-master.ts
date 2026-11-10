@@ -1,24 +1,25 @@
 /**
  * @file scripts/verify-sovereign-singularity-master.ts
- * @description Master Orchestration Verification Runner for Sovereign Rubicon-Core v31.0-SINGULARITY-OMEGA-PRIME.
+ * @description Master Orchestration Verification Runner for Sovereign Rubicon-Core v32.0-AUTONOMOUS-EVOLUTION.
  * Executes:
- *   1. Invariant & ZkML Verifier (verify-hdc-zkml-invariants.ts)
- *   2. Hardware-Native WASM & ML-DSA-65 Enclave Verifier (verify-v29-singularity.ts)
- *   3. Planetary Expansion Fabric 20-Pillar Verifier (verify-v30-expansion.ts)
- *   4. Autonomous Parliament Swarm & HMAC Epoch Test (SovereignAgentParliamentV31)
- *   5. PKZIP Release Synthesizer & Cryptographic Manifest (export-sovereign-release-zip.ts)
+ *   1. Hardware-Native WASM & ML-DSA-65 Enclave Verifier (verify-v29-singularity.ts)
+ *   2. Planetary Expansion Fabric 20-Pillar Verifier (verify-v30-expansion.ts)
+ *   3. Autonomous Parliament Swarm & HMAC Epoch Test (SovereignAgentParliamentV31)
+ *   4. v32.0 Autonomous Self-Evolving Genetic Kernel Mutation (if --mutate-kernel is passed)
  */
 
 import { SovereignAgentParliamentV31 } from '../include/SovereignAgentParliamentV31.js';
 import { SovereignExpansionFabricV30 } from '../include/SovereignExpansionFabricV30.js';
 import { SovereignSingularityEngineV29 } from '../include/SovereignSingularityEngineV29.js';
+import { SovereignSelfEvolvingEngineV32 } from '../include/SovereignSelfEvolvingEngineV32.js';
 
 async function runMasterVerification() {
   console.log('================================================================');
-  console.log('SOVEREIGN RUBICON-CORE v31.0 MASTER SINGULARITY VERIFICATION START');
+  console.log('SOVEREIGN RUBICON-CORE v32.0 MASTER SINGULARITY VERIFICATION START');
   console.log('================================================================');
 
   const t0 = process.hrtime.bigint();
+  const mutateKernel = process.argv.includes('--mutate-kernel');
 
   // 1. Verify v29 Hardware-Native Singularity Engine
   console.log('[MASTER 1/4] Executing v29 Hardware-Native WASM & ML-DSA-65 Enclave...');
@@ -34,7 +35,7 @@ async function runMasterVerification() {
   if (v30Receipt.totalPillarsExecuted !== 20) {
     throw new Error('Master Verification failed at v30 Planetary Fabric (expected 20 pillars).');
   }
-  console.log(`[MASTER 3/4] v30 Passed: 20/20 Pillars Verified | Root=${v30Receipt.fabricMerkleRootHex.slice(0, 24)}...`);
+  console.log(`[MASTER 2/4] v30 Passed: 20/20 Pillars Verified | Root=${v30Receipt.fabricMerkleRootHex.slice(0, 24)}...`);
 
   // 3. Verify Autonomous Parliament Swarm & HMAC Key Rotation
   console.log('[MASTER 3/4] Executing Autonomous 5-Node Parliament Swarm & HMAC Epochs...');
@@ -48,6 +49,15 @@ async function runMasterVerification() {
     throw new Error('Parliament HMAC Epoch mismatch.');
   }
   console.log(`[MASTER 3/4] Parliament Swarm Passed: Epoch=#${epoch} | Agent=${taskReceipt.agentId} | Proof=${taskReceipt.taskProofHex.slice(0, 24)}...`);
+
+  // 4. v32.0 Autonomous Self-Evolving Genetic Kernel Mutation
+  if (mutateKernel) {
+    console.log('[MASTER 4/4] Executing v32.0 Autonomous Self-Evolving Genetic Kernel Mutation...');
+    const evoReport = await SovereignSelfEvolvingEngineV32.executeEvolutionaryStep();
+    console.log(`[MASTER 4/4] Evolution Passed: Generation=#${evoReport.generationId} | Fitness=${evoReport.fitnessScore}% | MerkleRoot=${evoReport.merkleAuditRootHex.slice(0, 24)}...`);
+  } else {
+    console.log('[MASTER 4/4] v32.0 Autonomous Self-Evolving Daemon nominal (pass --mutate-kernel to trigger mutation step).');
+  }
 
   const totalLatencyUs = Number(process.hrtime.bigint() - t0) / 1000;
 
