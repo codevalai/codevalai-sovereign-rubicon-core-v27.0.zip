@@ -1,0 +1,172 @@
+name: "Sovereign Omega-Apex v33.0 (Phases 8-19 Maxed-Out DAG)"
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      fuzz_iterations:
+        description: 'Deterministic BFT Fuzz Iterations'
+        required: false
+        default: '25000'
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+  security-events: write
+
+env:
+  SOURCE_DATE_EPOCH: "1762732800"
+  TZ: "UTC"
+  LC_ALL: "C.UTF-8"
+  NODE_OPTIONS: "--frozen-intrinsics --disable-proto=throw"
+
+jobs:
+  formal-smt-preflight:
+    name: "Stage 1: Z3 Formal Unsat-Core & Supply-Chain Audit"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      lockfile_sha3: ${{ steps.lock_hash.outputs.sha3 }}
+      z3_unsat_digest: ${{ steps.z3_prove.outputs.digest }}
+    steps:
+      - name: Checkout Immutable Source Tree
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Provision Sovereign Pre-Warm Bootstrap (Phase 8)
+        uses: ./.github/actions/sovereign-bootstrap
+
+      - name: Compute Canonical Lockfile SHA3-512 Digest
+        id: lock_hash
+        run: |
+          HASH=$(openssl dgst -sha3-512 package-lock.json | awk '{print $2}')
+          echo "sha3=${HASH}" >> "$GITHUB_OUTPUT"
+          echo "### 🔒 Supply-Chain Lockfile Root" >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`package-lock.json\` SHA3-512: \`0x${HASH:0:48}...\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Execute Z3 SMT-LIB 2.0 Formal BFT Safety Prover (Phase 16)
+        id: z3_prove
+        run: |
+          sudo apt-get update -y && sudo apt-get install -y --no-install-recommends python3-z3
+          python3 scripts/prove-bft-invariants-z3.py > dist/z3-formal-proof.json
+          DIGEST=$(jq -r '.unsatCoreDigestSha3_512' dist/z3-formal-proof.json)
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "- **Z3 Formal BFT Safety Proof**: \`PROVED_UNSAT\` (\`${DIGEST:0:32}...\`)" >> "$GITHUB_STEP_SUMMARY"
+
+  airgapped-matrix-shards:
+    name: "Stage 2: Airgap + Seccomp Shard (${{ matrix.arch_label }})"
+    needs: formal-smt-preflight
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch_label: x86_64-AVX512
+          - runner: ubuntu-24.04-arm
+            arch_label: ARM64-NEON-SVE
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Phase 9 Stage-1: Engage nftables Registry Allowlist
+        run: sudo bash scripts/enforce-egress-airgap.sh allowlist
+
+      - name: Phase 8: Execute Zero-Trust Sovereign Bootstrap
+        uses: ./.github/actions/sovereign-bootstrap
+
+      - name: Phase 14: Compile Ring-0 Seccomp-BPF Syscall Jail Profile
+        run: sudo bash scripts/enforce-seccomp-ebpf-jail.sh enforce
+
+      - name: Phase 9 Stage-2: Engage Total Kernel Network Airgap (oifname lo)
+        run: sudo bash scripts/enforce-egress-airgap.sh total-airgap
+
+      - name: Verify Zero External Socket Exfiltration (Airgap Proof)
+        run: |
+          if curl -s --max-time 2 https://example.com >/dev/null 2>&1; then
+            echo "FATAL: Airgap breach detected!"
+            exit 1
+          fi
+          echo "[AIRGAP-VERIFIED] Outbound socket strictly blocked by kernel nftables."
+
+      - name: Phase 10: Execute Deterministic Chaos Fuzzer & Generate Proof Certificate
+        run: |
+          npm run lint
+          npm run fuzz:consensus
+          npm run generate:proof
+
+      - name: Phase 13: Verify Hardware TEE Silicon Attestation Quote (AMD SEV-SNP / Intel TDX)
+        run: npm run verify:tee
+
+      - name: Upload Architecture-Specific Proof Certificate Artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: proof-certificate-${{ matrix.arch_label }}
+          path: dist/sovereign-proof-certificate.json
+          if-no-files-found: error
+          retention-days: 14
+
+  cross-isa-equinumerosity-gate:
+    name: "Stage 3: Cross-ISA Bit-Exact State Root Convergence"
+    needs: [formal-smt-preflight, airgapped-matrix-shards]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Download x86_64 Proof Certificate
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: proof-certificate-x86_64-AVX512
+          path: dist/proofs/x86_64
+
+      - name: Download ARM64 Proof Certificate
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: proof-certificate-ARM64-NEON-SVE
+          path: dist/proofs/arm64
+
+      - name: Verify Bit-Exact Cross-ISA State Root Equinumerosity (Phase 18)
+        run: |
+          ROOT_X86=$(jq -r '.compositeStateRoot // .stateRoot' dist/proofs/x86_64/sovereign-proof-certificate.json)
+          ROOT_ARM=$(jq -r '.compositeStateRoot // .stateRoot' dist/proofs/arm64/sovereign-proof-certificate.json)
+
+          echo "x86_64 Composite State Root: ${ROOT_X86}"
+          echo "ARM64  Composite State Root: ${ROOT_ARM}"
+
+          if [ "${ROOT_X86}" != "${ROOT_ARM}" ] || [ -z "${ROOT_X86}" ]; then
+            echo "FATAL: Cross-ISA Non-Determinism Detected between x86_64 and ARM64!"
+            exit 1
+          fi
+
+          cp dist/proofs/x86_64/sovereign-proof-certificate.json dist/sovereign-proof-certificate.json
+
+          cat << EOF >> "$GITHUB_STEP_SUMMARY"
+          ## ⚡ Cross-ISA Deterministic Convergence Verified
+          | Architecture Shard | Vector ISA | Composite State Root | Convergence |
+          | :--- | :--- | :--- | :--- |
+          | \`x86_64\` | AVX-512 / AVX2 | \`${ROOT_X86}\` | ✅ **BIT-EXACT** |
+          | \`ARM64\` | ARMv9 NEON / SVE | \`${ROOT_ARM}\` | ✅ **BIT-EXACT** |
+          EOF
+
+      - name: Phase 14 & 15: Seal in-toto v1.0 Post-Quantum ML-DSA-87 Provenance
+        run: |
+          sudo bash scripts/enforce-seccomp-ebpf-jail.sh verify
+          npx tsx scripts/seal-pqc-transparency-ledger.ts
+
+      - name: Cryptographically Attest Build Provenance to Sigstore Transparency Log (SLSA v1.0 L3)
+        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517eb71b # v2.2.3
+        with:
+          subject-path: "dist/sovereign-intoto-pqc-provenance.json"

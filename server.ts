@@ -6,6 +6,7 @@ import { sovereignEngine } from './src/server/sovereignKernel.js';
 import { SovereignSingularityEngineV29 } from './src/server/SovereignSingularityEngineV29.js';
 import { SovereignExpansionFabricV30 } from './src/server/SovereignExpansionFabricV30.js';
 import { SovereignSelfEvolvingEngineV32 } from './src/server/SovereignSelfEvolvingEngineV32.js';
+import { SovereignSiliconApexV34 } from './src/server/SovereignSiliconApexV34.js';
 import { GoogleGenAI, Type } from '@google/genai';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1174,6 +1175,39 @@ Existing SMT invariants: ${repo.reaAnalysis.smtInvariants.join(' ; ')}.`,
         fitnessScore: receipt.fitnessScore,
         merkleAuditRootHex: receipt.merkleAuditRootHex.slice(0, 24),
         latencyUs: receipt.executionLatencyUs,
+      });
+
+      res.json({
+        receipt,
+        merkleLeafIndex: leaf.index,
+      });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // v34.0 Silicon-Native Singularity Apex (Phases 20-24: RISC-V RTL, Lean 4, TFHE LWE, Noise_NX VRF, IPFS Spore)
+  app.get('/api/rubicon/v34-apex/status', (req, res) => {
+    try {
+      const receipt = SovereignSiliconApexV34.executeApexCycle('STATUS-PROBE');
+      res.json({ receipt });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/rubicon/v34-apex/execute', (req, res) => {
+    try {
+      const customSeed = req.body?.customSeed ? String(req.body.customSeed) : undefined;
+      const receipt = SovereignSiliconApexV34.executeApexCycle(customSeed);
+      const leaf = sovereignEngine.getEventFabric().publish('rubicon.v34_silicon_apex_executed', {
+        version: receipt.version,
+        rtlVectors: receipt.phase20_siliconRtl.mersenne31TestVectors,
+        leanTheorems: receipt.phase21_lean4Formal.totalTheoremsVerified,
+        tfheTally: receipt.phase22_tfheParliament.homomorphicAggregateTally,
+        vrfLeader: receipt.phase23_noiseNxVrf.electedLeaderNode,
+        sporeCidV1Hex: receipt.phase24_ipfsSpore.sporeCidV1Hex.slice(0, 28),
+        latencyUs: receipt.totalExecutionLatencyUs,
       });
 
       res.json({

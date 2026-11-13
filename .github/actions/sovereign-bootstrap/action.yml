@@ -1,0 +1,43 @@
+name: 'Sovereign Core Deterministic Bootstrap'
+description: 'Zero-trust provisioning of Node, native Z3/libgit2 headers, and locked dependencies'
+inputs:
+  node-version:
+    description: 'Node.js version'
+    required: false
+    default: '22'
+  install-native:
+    description: 'Install libz3-dev and libgit2-dev if not running inside sovereign-runner container'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js & Lockfile Cache
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: 'npm'
+
+    - name: Provision Native Z3 SMT & GitVM Headers (Cached APT)
+      if: inputs.install-native == 'true'
+      shell: bash
+      run: |
+        if ! dpkg -s libz3-dev libgit2-dev >/dev/null 2>&1; then
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libz3-dev python3-z3 libgit2-dev nftables dnsutils jq
+        else
+          echo "[SOVEREIGN-BOOTSTRAP] Native headers already present in image."
+        fi
+
+    - name: Enforce Immutable Lockfile Presence
+      shell: bash
+      run: |
+        if [ ! -f "package-lock.json" ]; then
+          echo "::error::Fatal Vector A violation: package-lock.json missing at repository root."
+          exit 1
+        fi
+
+    - name: Deterministic Dependency Installation
+      shell: bash
+      run: npm ci --legacy-peer-deps --ignore-scripts

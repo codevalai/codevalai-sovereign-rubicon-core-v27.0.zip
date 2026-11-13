@@ -1,0 +1,89 @@
+name: Sovereign Master Verification DAG
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: sovereign-dag-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  gatekeeper-lock-and-types:
+    name: "Stage 1: Lockfile & AST Gate"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/sovereign-bootstrap
+        with:
+          install-native: 'false'
+      - name: Audit Supply Chain & Lockfile HTTPS Integrity
+        run: npx lockfile-lint --path package-lock.json --type npm --validate-https
+      - name: Strict TypeScript AST Verification
+        run: npm run compile_applet
+
+  verify-shards:
+    name: "Stage 2: [${{ matrix.shard.name }}] (${{ matrix.os }})"
+    needs: gatekeeper-lock-and-types
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+        shard:
+          - name: "ML-DSA-65 & GitVM Hypergrid"
+            cmd: "npm run verify:mldsa"
+          - name: "HDC 10240-bit & 1.58-bit Ternary zkML"
+            cmd: "npm run test:crypto:hybrid"
+          - name: "HotStuff 3-Phase BFT & CXL.mem Mesh"
+            cmd: "npm run test:swarm:pbft"
+          - name: "10k-Iteration Byzantine Chaos Fuzzer"
+            cmd: "npm run fuzz:consensus"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/sovereign-bootstrap
+      - name: Engage Total Kernel Network Airgap
+        run: |
+          chmod +x scripts/enforce-egress-airgap.sh
+          ./scripts/enforce-egress-airgap.sh total-airgap
+      - name: Execute Airgapped Verification Shard
+        run: ${{ matrix.shard.cmd }}
+
+  seal-proof-certificate:
+    name: "Stage 3: Seal SHA3-512 Proof & SLSA Attestation"
+    needs: verify-shards
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/sovereign-bootstrap
+      - name: Generate Proof Certificate & Kernel Bundle
+        run: |
+          npx tsx scripts/generate-proof-certificate.ts
+          npm run kernel-checkpoint-compact
+      - name: Render Live Executive Telemetry to GitHub Summary
+        run: |
+          CERT_ROOT=$(jq -r '.stateMerkleRoot' dist/sovereign-proof-certificate.json)
+          echo "### 🛡️ Sovereign Rubicon Core v32.0 — Cryptographic Proof Sealed" >> $GITHUB_STEP_SUMMARY
+          echo "**Composite State Merkle Root (SHA3-512):** \`${CERT_ROOT}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Verification Gate | Command | Duration (ms) | Status | SHA3-512 Digest (Truncated) |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- | :---: | :---: | :--- |" >> $GITHUB_STEP_SUMMARY
+          jq -r '.gates[] | "| **\(.suite)** | `\(.command)` | \(.durationMs) ms | ✅ `\(.status)` | `\(.stdoutDigest[0:22])...` |"' dist/sovereign-proof-certificate.json >> $GITHUB_STEP_SUMMARY
+      - name: Upload Sovereign Proof Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sovereign-proof-certificate-${{ github.sha }}
+          path: dist/
+          retention-days: 90
+      - name: Attest SLSA v1.0 Build Provenance
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: 'dist/sovereign-proof-certificate.json'

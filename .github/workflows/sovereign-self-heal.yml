@@ -1,0 +1,62 @@
+name: Sovereign Autonomous Self-Healing Guardian
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  autonomous-remediation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Detect & Heal Vector A (Lockfile Drift) & Vector B (Script Mapping Drift)
+        run: |
+          if ! npm ci --legacy-peer-deps --dry-run >/dev/null 2>&1; then
+            echo "[SELF-HEAL] Lockfile drift detected. Synthesizing authoritative package-lock.json..."
+            npm install --package-lock-only --legacy-peer-deps
+          fi
+
+          node -e '
+            const fs = require("fs");
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            pkg.scripts = pkg.scripts || {};
+            const required = {
+              "verify:mldsa": "tsx scripts/verify-v29-singularity.ts",
+              "test:crypto:hybrid": "tsx scripts/verify-hdc-zkml-invariants.ts",
+              "test:swarm:pbft": "tsx scripts/verify-v30-expansion.ts",
+              "kernel-checkpoint-compact": "tsx scripts/export-sovereign-release-zip.ts",
+              "fuzz:consensus": "tsx scripts/fuzz-consensus-mesh.ts --iterations=10000",
+              "verify:tee": "tsx scripts/verify-tee-attestation.ts --nonce=LOCAL_AUDIT --allow-simulated-tee",
+              "verify:tee:strict": "tsx scripts/verify-tee-attestation.ts --nonce=PRODUCTION_ENCLAVE"
+            };
+            let mutated = false;
+            for (const [k, v] of Object.entries(required)) {
+              if (pkg.scripts[k] !== v) {
+                pkg.scripts[k] = v;
+                mutated = true;
+              }
+            }
+            if (mutated) {
+              fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
+              console.log("[SELF-HEAL] Restored missing script hooks in package.json");
+            }
+          '
+      - name: Commit Autonomous Surgical Remediation
+        run: |
+          if [[ -n $(git status --porcelain) ]]; then
+            git config user.name "sovereign-autonomous-bot[bot]"
+            git config user.email "sovereign-bot@users.noreply.github.com"
+            git checkout -B autonomous/self-heal-drift
+            git add package.json package-lock.json
+            git commit -m "chore(autonomous-heal): reconcile lockfile & script invariant drift"
+            git push -f origin autonomous/self-heal-drift
+          else
+            echo "[SELF-HEAL] Zero invariant drift detected. Repository is nominal."
+          fi

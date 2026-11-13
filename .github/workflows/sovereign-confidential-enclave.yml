@@ -1,0 +1,106 @@
+name: Sovereign Confidential Enclave (SEV-SNP / Intel TDX)
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      runner_mode:
+        description: 'Target Runner Pool (confidential-cvm or github-hosted-sim)'
+        required: true
+        default: 'github-hosted-sim'
+        type: choice
+        options:
+          - confidential-cvm
+          - github-hosted-sim
+      expected_launch_measurement:
+        description: 'Expected 48-byte SHA-384 OVMF/TDX Launch Digest (optional)'
+        required: false
+        default: ''
+
+concurrency:
+  group: sovereign-tee-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  confidential-zkml-mldsa-pipeline:
+    name: "Confidential TEE Enclave (${{ inputs.runner_mode || 'github-hosted-sim' }})"
+    runs-on: ${{ inputs.runner_mode == 'confidential-cvm' && 'confidential-cvm' || 'ubuntu-latest' }}
+    steps:
+      - name: Checkout Sovereign Rubicon Core
+        uses: actions/checkout@v4
+
+      - name: Bootstrap Deterministic Toolchain
+        uses: ./.github/actions/sovereign-bootstrap
+
+      - name: Stage 1 — Inspect CPU Memory Encryption & Enclave Devices
+        run: |
+          echo "=== Confidential Silicon Telemetry ==="
+          grep -E 'sev|sme|tdx' /proc/cpuinfo | head -n 5 || echo "Standard non-TEE CPU flags detected"
+          ls -la /dev/sev-guest /dev/tdx_guest /sys/kernel/config/tsm/report 2>/dev/null || echo "Using TSM/Simulation layer"
+
+      - name: Stage 2 — Pre-Execution Hardware Quote & Silicon TCB Audit
+        run: |
+          SIM_FLAG=""
+          if [[ "${{ inputs.runner_mode }}" != "confidential-cvm" ]]; then
+            SIM_FLAG="--allow-simulated-tee"
+          fi
+          npx tsx scripts/verify-tee-attestation.ts \
+            --nonce="PRE_EXECUTION_GATE" \
+            --expected-measurement="${{ inputs.expected_launch_measurement }}" \
+            --output-quote="dist/pre-exec-tee-quote.bin" \
+            $SIM_FLAG
+
+      - name: Stage 3 — Engage Total Kernel Network Airgap Inside Enclave
+        run: |
+          chmod +x scripts/enforce-egress-airgap.sh
+          ./scripts/enforce-egress-airgap.sh total-airgap
+
+      - name: Stage 4 — Execute ML-DSA-65 Post-Quantum & 1.58-Bit Ternary zkML Invariants
+        run: |
+          npm run verify:mldsa | tee dist/mldsa-enclave.log
+          npm run test:crypto:hybrid | tee dist/zkml-enclave.log
+
+      - name: Stage 5 — Bind Proof Output Digest to Post-Execution Hardware Quote
+        run: |
+          SIM_FLAG=""
+          if [[ "${{ inputs.runner_mode }}" != "confidential-cvm" ]]; then
+            SIM_FLAG="--allow-simulated-tee"
+          fi
+          PROOF_DIGEST=$(cat dist/mldsa-enclave.log dist/zkml-enclave.log | sha512sum | awk '{print $1}')
+          npx tsx scripts/verify-tee-attestation.ts \
+            --nonce="POST_EXEC:${PROOF_DIGEST}" \
+            --expected-measurement="${{ inputs.expected_launch_measurement }}" \
+            --output-quote="dist/post-exec-tee-quote.bin" \
+            $SIM_FLAG
+
+      - name: Stage 6 — Publish Confidential Attestation Telemetry
+        run: |
+          echo "### 🔒 Sovereign Confidential Enclave Attestation Report" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+          cat dist/tee-attestation-manifest.json >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Stage 7 — Lift Airgap for Artifact Upload & SLSA Provenance
+        if: always()
+        run: sudo nft flush ruleset || true
+
+      - name: Upload Hardware Quotes & Enclave Proof Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: sovereign-tee-enclave-quotes-${{ github.sha }}
+          path: |
+            dist/*.bin
+            dist/tee-attestation-manifest.json
+            dist/*.log
+          retention-days: 90
+
+      - name: Attest Hardware Quote Bundle via Sigstore OIDC (SLSA v1.0)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: 'dist/post-exec-tee-quote.bin'

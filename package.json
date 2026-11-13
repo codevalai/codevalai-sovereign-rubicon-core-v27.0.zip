@@ -13,7 +13,19 @@
     "verify:mldsa": "tsx scripts/verify-v29-singularity.ts",
     "test:crypto:hybrid": "tsx scripts/verify-hdc-zkml-invariants.ts",
     "test:swarm:pbft": "tsx scripts/verify-v30-expansion.ts",
-    "kernel-checkpoint-compact": "tsx scripts/export-sovereign-release-zip.ts"
+    "kernel-checkpoint-compact": "tsx scripts/export-sovereign-release-zip.ts",
+    "compile_applet": "tsc --noEmit",
+    "lint_applet": "tsc --noEmit",
+    "fuzz:consensus": "tsx scripts/fuzz-consensus-mesh.ts --iterations=10000",
+    "generate:proof": "tsx scripts/generate-proof-certificate.ts",
+    "verify:tee": "tsx scripts/verify-tee-attestation.ts --nonce=LOCAL_AUDIT --allow-simulated-tee",
+    "verify:tee:strict": "tsx scripts/verify-tee-attestation.ts --nonce=PRODUCTION_ENCLAVE",
+    "jail:seccomp": "bash scripts/enforce-seccomp-ebpf-jail.sh verify",
+    "prove:z3": "python3 scripts/prove-bft-invariants-z3.py",
+    "seal:pqc": "tsx scripts/seal-pqc-transparency-ledger.ts",
+    "verify:tfhe": "tsx scripts/tfhe-parliament-gate.ts",
+    "verify:v34": "tsx scripts/verify-v34-silicon-apex.ts",
+    "verify:omega": "npm run prove:z3 && npm run fuzz:consensus && npm run generate:proof && npm run verify:tee && npm run seal:pqc && npm run verify:v34"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

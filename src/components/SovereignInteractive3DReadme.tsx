@@ -18,7 +18,8 @@ export type SpatialLatticeMode =
   | 'HAPPY_513_BULK'
   | 'BINIUS_CIRCLE_STARK'
   | 'FIBONACCI_BRAID_ZTAU'
-  | 'CODEVALAI_ORBITAL_LIBRARIES';
+  | 'CODEVALAI_ORBITAL_LIBRARIES'
+  | 'SILICON_TFHE_P2P_SPORE';
 
 interface SovereignInteractive3DReadmeProps {
   readmeSource?: string;
@@ -153,6 +154,9 @@ export const SovereignInteractive3DReadme: React.FC<SovereignInteractive3DReadme
   const [v32EvolutionReceipt, setV32EvolutionReceipt] = useState<any | null>(null);
   const [runningV32, setRunningV32] = useState<boolean>(false);
 
+  const [v34ApexReceipt, setV34ApexReceipt] = useState<any | null>(null);
+  const [runningV34, setRunningV34] = useState<boolean>(false);
+
   // Mutable ref bridge so React UI controls never recreate the WebGL context
   const stateRef = useRef({
     mode: 'HAPPY_513_BULK' as SpatialLatticeMode,
@@ -220,6 +224,25 @@ export const SovereignInteractive3DReadme: React.FC<SovereignInteractive3DReadme
     }
   };
 
+  const executeV34SiliconApex = async (seedOverride?: string) => {
+    setRunningV34(true);
+    try {
+      const res = await fetch('/api/rubicon/v34-apex/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customSeed: seedOverride }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setV34ApexReceipt(data.receipt);
+      }
+    } catch {
+      // ignore transient network error
+    } finally {
+      setRunningV34(false);
+    }
+  };
+
   useEffect(() => {
     fetch('/api/rubicon/v29-singularity/status')
       .then((r) => (r.ok ? r.json() : null))
@@ -239,6 +262,13 @@ export const SovereignInteractive3DReadme: React.FC<SovereignInteractive3DReadme
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.receipt) setV32EvolutionReceipt(d.receipt);
+      })
+      .catch(() => {});
+
+    fetch('/api/rubicon/v34-apex/status')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.receipt) setV34ApexReceipt(d.receipt);
       })
       .catch(() => {});
 
@@ -527,6 +557,37 @@ export const SovereignInteractive3DReadme: React.FC<SovereignInteractive3DReadme
     }
     orbitalGroup.add(libraryNodesGroup);
 
+    // MODE 5: Phase 20-24 RISC-V Silicon Coprocessor + TFHE Lattice Ring + P2P Spore Mesh
+    const siliconApexGroup = new THREE.Group();
+    siliconApexGroup.visible = false;
+    scene.add(siliconApexGroup);
+
+    // Multi-part RISC-V Coprocessor Die Package
+    const dieSubstrate = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.32, 3.6), matSlateFrame);
+    const dieHeatspreader = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.45, 2.4), matGoldCore);
+    dieHeatspreader.position.y = 0.25;
+    const tfheCrystalCap = new THREE.Mesh(new THREE.OctahedronGeometry(1.1, 0), matCrystalShell);
+    tfheCrystalCap.position.y = 1.1;
+    siliconApexGroup.add(dieSubstrate, dieHeatspreader, tfheCrystalCap);
+
+    // 5 Validator Noise_NX + VRF Satellites in QUIC Ring
+    const validatorRingGroup = new THREE.Group();
+    for (let i = 0; i < 5; i++) {
+      const angle = (i * 2 * Math.PI) / 5;
+      const peerGroup = new THREE.Group();
+      const peerCore = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.55, 0.6, 6), i === 0 ? matGoldCore : matCyanMetal);
+      const peerRing = new THREE.Mesh(new THREE.TorusGeometry(0.72, 0.05, 12, 32), matEmeraldBulk);
+      peerRing.rotation.x = Math.PI / 2;
+      peerGroup.add(peerCore, peerRing);
+      peerGroup.position.set(Math.cos(angle) * 5.2, 0.4, Math.sin(angle) * 5.2);
+      peerGroup.userData = { angle, idx: i };
+      validatorRingGroup.add(peerGroup);
+    }
+    const quicBusTorus = new THREE.Mesh(new THREE.TorusGeometry(5.2, 0.04, 12, 96), matCyanMetal);
+    quicBusTorus.rotation.x = Math.PI / 2;
+    quicBusTorus.position.y = 0.4;
+    siliconApexGroup.add(validatorRingGroup, quicBusTorus);
+
     // =========================================================================
     // ORBIT CONTROLS & SOFTWARE-WEBGL PACED ANIMATION LOOP
     // =========================================================================
@@ -589,6 +650,7 @@ export const SovereignInteractive3DReadme: React.FC<SovereignInteractive3DReadme
       biniusStarkGroup.visible = st.mode === 'BINIUS_CIRCLE_STARK';
       braidGroup.visible = st.mode === 'FIBONACCI_BRAID_ZTAU';
       orbitalGroup.visible = st.mode === 'CODEVALAI_ORBITAL_LIBRARIES';
+      siliconApexGroup.visible = st.mode === 'SILICON_TFHE_P2P_SPORE';
 
       // Animate active group with exploded-view offset
       const exp = st.currentExplode;
@@ -632,6 +694,16 @@ export const SovereignInteractive3DReadme: React.FC<SovereignInteractive3DReadme
             Math.sin(theta) * Math.cos(incl) * r
           );
           node.rotation.y = -theta;
+        });
+      } else if (siliconApexGroup.visible) {
+        dieHeatspreader.position.y = 0.25 + exp * 0.9;
+        tfheCrystalCap.position.y = 1.1 + exp * 2.1;
+        tfheCrystalCap.rotation.y = elapsed * 0.7;
+        validatorRingGroup.children.forEach((peer, idx) => {
+          const r = 5.2 + exp * 1.8;
+          const a = (idx * 2 * Math.PI) / 5 + elapsed * 0.25;
+          peer.position.set(Math.cos(a) * r, 0.4 + Math.sin(elapsed * 1.5 + idx) * 0.2, Math.sin(a) * r);
+          peer.rotation.y = -a;
         });
       }
 
@@ -708,10 +780,10 @@ export const SovereignInteractive3DReadme: React.FC<SovereignInteractive3DReadme
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Compass className="w-4 h-4 text-cyan-500" />
-              Interactive 3D Topological Lattice &amp; Spatial Hypergrid (Three.js PBR · ACES Filmic · 4 Modes)
+              Interactive 3D Topological Lattice &amp; Spatial Hypergrid (Three.js PBR · ACES Filmic · 5 Modes)
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Orbit, zoom, or use the collapsible bottom dock to switch between the 3D AdS/CFT HaPPY <code className="font-mono">[[5, 1, 3]]</code> Pentagon Bulk, Binius <code className="font-mono">GF(2^128)</code> Tower + Circle STARK Torus, Fibonacci Anyon <code className="font-mono">Z[τ]</code> Braid Worldlines, and the 8 <code className="font-mono">@codevalai/*</code> Orbital Libraries.
+              Orbit, zoom, or use the collapsible bottom dock to switch between the 3D AdS/CFT HaPPY <code className="font-mono">[[5, 1, 3]]</code> Pentagon Bulk, Binius <code className="font-mono">GF(2^128)</code> Tower + Circle STARK Torus, Fibonacci Anyon <code className="font-mono">Z[τ]</code> Braid Worldlines, the 9 <code className="font-mono">@codevalai/*</code> Orbital Libraries, and the RISC-V <code className="font-mono">rv64gcv_zve32x</code> + TFHE Noise_NX P2P Spore Mesh.
             </p>
           </div>
           <div className="flex items-center gap-3 text-xs font-mono text-slate-500 dark:text-slate-400 tabular-nums shrink-0">
@@ -768,6 +840,7 @@ export const SovereignInteractive3DReadme: React.FC<SovereignInteractive3DReadme
                     { id: 'BINIUS_CIRCLE_STARK', label: '2. Binius + Circle STARK' },
                     { id: 'FIBONACCI_BRAID_ZTAU', label: '3. Fibonacci Z[τ] Braid' },
                     { id: 'CODEVALAI_ORBITAL_LIBRARIES', label: '4. 9 @codevalai/* Orbits' },
+                    { id: 'SILICON_TFHE_P2P_SPORE', label: '5. RISC-V RTL + TFHE P2P' },
                   ] as const
                 ).map((m) => (
                   <button
@@ -1215,6 +1288,109 @@ export const SovereignInteractive3DReadme: React.FC<SovereignInteractive3DReadme
               </div>
               <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                 Status: ATTESTED_AND_LOCKED
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* PART 6: v34.0 SILICON-NATIVE SINGULARITY APEX (PHASES 20–24) */}
+      <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl p-6 space-y-5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+          <div>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Compass className="w-4 h-4 text-amber-500" />
+              v34.0 Silicon-Native Singularity Apex (Phases 20–24: RISC-V RTL · Lean 4 · TFHE LWE · Noise_NX VRF · IPFS Spore)
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Synthesizes cycle-accurate SystemVerilog Mersenne-31 vectors, audits Lean 4 dependent-type theorems, evaluates integer-lattice LWE homomorphic parliament votes, runs X25519 Noise_NX VRF sortition, and emits CIDv1 Git/IPFS spores.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              onClick={() => executeV34SiliconApex()}
+              disabled={runningV34}
+              className="px-4 py-2 rounded-lg bg-amber-500 text-slate-950 font-mono text-xs font-bold hover:bg-amber-400 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+            >
+              {runningV34 ? 'Running Phases 20–24...' : 'Execute Phases 20–24 Apex Cycle'}
+            </button>
+          </div>
+        </div>
+
+        {v34ApexReceipt && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 font-mono text-xs tabular-nums">
+            <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-[#0B0E17] border border-slate-200 dark:border-slate-800">
+              <div className="text-[10px] text-amber-500 font-bold">
+                PHASE 20 · RISC-V RTL ALU
+              </div>
+              <div className="text-sm font-bold text-slate-900 dark:text-white mt-1">
+                {v34ApexReceipt.phase20_siliconRtl?.mersenne31TestVectors} Vectors Bit-Exact
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 truncate">
+                ISA: {v34ApexReceipt.phase20_siliconRtl?.isaTarget}
+              </div>
+              <div className="text-[11px] text-emerald-500 mt-1">
+                RTL Match: {String(v34ApexReceipt.phase20_siliconRtl?.allBitExact)} ({v34ApexReceipt.phase20_siliconRtl?.latencyUs} μs)
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-[#0B0E17] border border-slate-200 dark:border-slate-800">
+              <div className="text-[10px] text-cyan-500 font-bold">
+                PHASE 21 · LEAN 4 FORMAL
+              </div>
+              <div className="text-sm font-bold text-slate-900 dark:text-white mt-1">
+                {v34ApexReceipt.phase21_lean4Formal?.totalTheoremsVerified} Theorems Verified
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 truncate">
+                {v34ApexReceipt.phase21_lean4Formal?.kernelStatus}
+              </div>
+              <div className="text-[11px] text-slate-400 mt-1 truncate">
+                Spine: {v34ApexReceipt.phase21_lean4Formal?.proofSpineSha3_512?.slice(0, 18)}...
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-[#0B0E17] border border-slate-200 dark:border-slate-800">
+              <div className="text-[10px] text-emerald-500 font-bold">
+                PHASE 22 · TFHE LWE GATE
+              </div>
+              <div className="text-sm font-bold text-slate-900 dark:text-white mt-1">
+                Tally {v34ApexReceipt.phase22_tfheParliament?.homomorphicAggregateTally} / 5 Encrypted
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                q={v34ApexReceipt.phase22_tfheParliament?.modulusQ} · Margin: {v34ApexReceipt.phase22_tfheParliament?.aggregateNoiseMargin}
+              </div>
+              <div className="text-[11px] text-emerald-500 mt-1">
+                Homomorphism: {String(v34ApexReceipt.phase22_tfheParliament?.homomorphismVerified)}
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-[#0B0E17] border border-slate-200 dark:border-slate-800">
+              <div className="text-[10px] text-purple-400 font-bold">
+                PHASE 23 · NOISE_NX VRF
+              </div>
+              <div className="text-sm font-bold text-slate-900 dark:text-white mt-1 truncate">
+                Leader: {v34ApexReceipt.phase23_noiseNxVrf?.electedLeaderNode}
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                X25519 ECDH: {v34ApexReceipt.phase23_noiseNxVrf?.ecdhSharedSecretsVerified}/5
+              </div>
+              <div className="text-[11px] text-slate-400 mt-1">
+                Slot #{v34ApexReceipt.phase23_noiseNxVrf?.epochSlot} · VRF Valid: {String(v34ApexReceipt.phase23_noiseNxVrf?.vrfSignatureValid)}
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-[#0B0E17] border border-slate-200 dark:border-slate-800">
+              <div className="text-[10px] text-rose-400 font-bold">
+                PHASE 24 · GIT/IPFS SPORE
+              </div>
+              <div className="text-sm font-bold text-slate-900 dark:text-white mt-1 truncate">
+                {v34ApexReceipt.phase24_ipfsSpore?.sporeCidV1Hex?.slice(0, 18)}...
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 truncate">
+                Sig: {v34ApexReceipt.phase24_ipfsSpore?.sporeSignatureHex?.slice(0, 18)}...
+              </div>
+              <div className="text-[11px] text-emerald-500 mt-1">
+                Apex Cycle: {v34ApexReceipt.totalExecutionLatencyUs} μs
               </div>
             </div>
           </div>
