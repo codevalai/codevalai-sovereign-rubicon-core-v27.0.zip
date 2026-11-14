@@ -1,6 +1,9 @@
 name: Sovereign Confidential Enclave (SEV-SNP / Intel TDX)
+
 on:
   push:
+    branches: [ main ]
+  pull_request:
     branches: [ main ]
   workflow_dispatch:
     inputs:
@@ -32,13 +35,14 @@ jobs:
     runs-on: ${{ inputs.runner_mode == 'confidential-cvm' && 'confidential-cvm' || 'ubuntu-latest' }}
     steps:
       - name: Checkout Sovereign Rubicon Core
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Bootstrap Deterministic Toolchain
         uses: ./.github/actions/sovereign-bootstrap
 
       - name: Stage 1 — Inspect CPU Memory Encryption & Enclave Devices
         run: |
+          mkdir -p dist
           echo "=== Confidential Silicon Telemetry ==="
           grep -E 'sev|sme|tdx' /proc/cpuinfo | head -n 5 || echo "Standard non-TEE CPU flags detected"
           ls -la /dev/sev-guest /dev/tdx_guest /sys/kernel/config/tsm/report 2>/dev/null || echo "Using TSM/Simulation layer"
@@ -55,15 +59,10 @@ jobs:
             --output-quote="dist/pre-exec-tee-quote.bin" \
             $SIM_FLAG
 
-      - name: Stage 3 — Engage Total Kernel Network Airgap Inside Enclave
+      - name: Stage 3 & 4 — Execute ML-DSA-65 & 1.58-Bit Ternary zkML Inside Airgapped Kernel Namespace
         run: |
           chmod +x scripts/enforce-egress-airgap.sh
-          ./scripts/enforce-egress-airgap.sh total-airgap
-
-      - name: Stage 4 — Execute ML-DSA-65 Post-Quantum & 1.58-Bit Ternary zkML Invariants
-        run: |
-          npm run verify:mldsa | tee dist/mldsa-enclave.log
-          npm run test:crypto:hybrid | tee dist/zkml-enclave.log
+          sudo -E env "PATH=$PATH" bash scripts/enforce-egress-airgap.sh airgap-exec -- bash -c "set -o pipefail; npm run verify:mldsa | tee dist/mldsa-enclave.log && npm run test:crypto:hybrid | tee dist/zkml-enclave.log"
 
       - name: Stage 5 — Bind Proof Output Digest to Post-Execution Hardware Quote
         run: |
@@ -80,17 +79,17 @@ jobs:
 
       - name: Stage 6 — Publish Confidential Attestation Telemetry
         run: |
-          echo "### 🔒 Sovereign Confidential Enclave Attestation Report" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
-          cat dist/tee-attestation-manifest.json >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "### Confidential Enclave Attestation Report" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`\`\`json" >> "$GITHUB_STEP_SUMMARY"
+          cat dist/tee-attestation-manifest.json >> "$GITHUB_STEP_SUMMARY"
+          echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Stage 7 — Lift Airgap for Artifact Upload & SLSA Provenance
+      - name: Stage 7 — Ensure Firewall State Clean
         if: always()
-        run: sudo nft flush ruleset || true
+        run: sudo bash scripts/enforce-egress-airgap.sh lift || true
 
       - name: Upload Hardware Quotes & Enclave Proof Bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: sovereign-tee-enclave-quotes-${{ github.sha }}
           path: |
@@ -100,7 +99,7 @@ jobs:
           retention-days: 90
 
       - name: Attest Hardware Quote Bundle via Sigstore OIDC (SLSA v1.0)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/attest-build-provenance@v1
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.event.repository.private == false
+        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517eb71b # v2.2.3
         with:
           subject-path: 'dist/post-exec-tee-quote.bin'

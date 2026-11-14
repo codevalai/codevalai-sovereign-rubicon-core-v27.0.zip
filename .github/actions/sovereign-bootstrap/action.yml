@@ -18,14 +18,15 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
         cache: 'npm'
+        cache-dependency-path: 'package-lock.json'
 
-    - name: Provision Native Z3 SMT & GitVM Headers (Cached APT)
+    - name: Provision Native Z3 SMT & GitVM Headers
       if: inputs.install-native == 'true'
       shell: bash
       run: |
-        if ! dpkg -s libz3-dev libgit2-dev >/dev/null 2>&1; then
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libz3-dev python3-z3 libgit2-dev nftables dnsutils jq
+        if ! dpkg -s libz3-dev libgit2-dev z3 nftables >/dev/null 2>&1; then
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends z3 libz3-dev python3-z3 libgit2-dev nftables dnsutils jq iproute2 libcap2-bin
         else
           echo "[SOVEREIGN-BOOTSTRAP] Native headers already present in image."
         fi

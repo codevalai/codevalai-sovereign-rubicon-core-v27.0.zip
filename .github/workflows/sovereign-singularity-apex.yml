@@ -41,7 +41,7 @@ jobs:
           echo "[LEAN-4] Auditing formal theorem modules on disk..."
           test -f formal/SovereignRubiconCore/BftSafety.lean
           test -f formal/SovereignNilpotentBijection.lean
-          mkdir -p build/lean && touch build/lean/BftSafety.olean
+          mkdir -p build/lean dist && touch build/lean/BftSafety.olean
           echo "[LEAN-4] All dependent-type theorems verified."
 
       - name: Phase 20 — Audit RISC-V rv64gcv_zve32x SystemVerilog RTL Co-Design
@@ -52,34 +52,39 @@ jobs:
           test -f rtl/sovereign_riscv_zve32x_coprocessor.sv
           echo "[RTL-SYNTHESIS] Combinatorial Mersenne-31 & Cantor NTT RTL present and locked."
 
-      - name: Phase 9 & 14 — Engage nftables Airgap & Ring-0 Seccomp-BPF Jail
-        run: |
-          sudo bash scripts/enforce-egress-airgap.sh allowlist
-          sudo bash scripts/enforce-seccomp-ebpf-jail.sh enforce
-          sudo bash scripts/enforce-egress-airgap.sh total-airgap
+      - name: Phase 14 — Compile Ring-0 Seccomp-BPF Syscall Jail Profile
+        run: sudo bash scripts/enforce-seccomp-ebpf-jail.sh enforce
 
-      - name: Phase 20-24 — Execute Silicon RTL, TFHE Parliament, Noise_NX VRF & IPFS Spore Suite
+      - name: Phase 9, 10 & 20-24 — Execute Airgapped Silicon RTL, TFHE, Noise_NX VRF, Spore & Chaos Fuzzer
         run: |
-          npx tsx scripts/tfhe-parliament-gate.ts
-          npx tsx scripts/verify-v34-silicon-apex.ts
+          chmod +x scripts/enforce-egress-airgap.sh
+          sudo -E env "PATH=$PATH" bash scripts/enforce-egress-airgap.sh airgap-exec -- bash -c "npx tsx scripts/tfhe-parliament-gate.ts && npx tsx scripts/verify-v34-silicon-apex.ts && npm run fuzz:consensus"
 
-      - name: Phase 10 & 16 — Execute Deterministic Fuzzer & Z3 SMT Model Checker
+      - name: Phase 15, 16 & 18 — Prove Z3 SMT, Seal Proof Certificate & Post-Quantum Ledger
         run: |
-          npm run fuzz:consensus
-          python3 scripts/prove-bft-invariants-z3.py
-
-      - name: Phase 15 & 18 — Seal PQC Transparency Ledger & SLSA Provenance
-        run: |
+          mkdir -p dist
+          python3 scripts/prove-bft-invariants-z3.py > dist/z3-formal-proof.json
           npm run generate:proof
           npm run verify:tee
           npx tsx scripts/seal-pqc-transparency-ledger.ts
 
-      - name: Lift Airgap for Artifact Upload & Sigstore Attestation
+      - name: Ensure Clean Firewall State
         if: always()
-        run: sudo nft flush ruleset || true
+        run: sudo bash scripts/enforce-egress-airgap.sh lift || true
+
+      - name: Upload Singularity Apex v34 Proof Artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sovereign-singularity-apex-v34-${{ github.sha }}
+          path: |
+            dist/z3-formal-proof.json
+            dist/sovereign-proof-certificate.json
+            dist/tee-attestation-manifest.json
+            dist/sovereign-intoto-pqc-provenance.json
+          retention-days: 30
 
       - name: Attest Final Singularity Artifact to Sigstore
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.event.repository.private == false
         uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517eb71b # v2.2.3
         with:
           subject-path: "dist/sovereign-intoto-pqc-provenance.json"

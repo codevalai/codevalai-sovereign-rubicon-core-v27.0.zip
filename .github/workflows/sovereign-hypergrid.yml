@@ -10,10 +10,14 @@ on:
     branches: [ main, master ]
   schedule:
     - cron: '*/30 * * * *' # Continuous 30-minute autonomous invariant & BFT health sweep
+  workflow_dispatch:
 
 concurrency:
   group: sovereign-hypergrid-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   hypergrid-consensus:
@@ -21,27 +25,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
-    permissions:
-      contents: write
-      pull-requests: write
-
     steps:
       - name: Checkout Sovereign Repository (Deep Fetch)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
-          persist-credentials: true
 
       - name: Setup Node.js Runtime & Caching
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '22'
           cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
 
       - name: Install System Dependencies & Z3 Prover Binaries
         run: |
-          sudo apt-get update && sudo apt-get install -y libz3-dev python3-z3 libgit2-dev
-          npm ci
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends z3 libz3-dev python3-z3 libgit2-dev
+          npm ci --legacy-peer-deps
 
       - name: 1. Verify Git-to-Merkle Spine DAG Homomorphism
         run: |
@@ -66,18 +66,20 @@ jobs:
           npm run test:crypto:hybrid
 
       - name: 5. 5-Node Parliament Swarm PBFT Quorum & Circuit-Breaker Simulation
-        env:
-          AI_STUDIO_API_KEY: ${{ secrets.GOOGLE_AI_STUDIO_API_KEY }}
         run: |
           echo "Simulating Byzantine faults, node slashes, and automated watchdog recovery loops..."
           npm run test:swarm:pbft
 
-      - name: 6. Autonomous Git-Native State Compaction & Checkpoint Commit
+      - name: 6. Autonomous Git-Native State Compaction & Release Archive Verification
         run: |
-          git config --global user.name "Sovereign-Kernel-Daemon"
-          git config --global user.email "daemon@sovereign.lattice"
-          echo "Appending automated Merkle checkpoint leaf and packing Git state..."
-          npx tsx scripts/kernel-checkpoint-compact.ts
-          git add .
-          git commit -m "chore(kernel): autonomous cryptographic checkpoint compaction [skip ci]" || echo "No changes to commit"
-          git push origin HEAD:${{ github.ref_name }} || echo "Push skipped or unprivileged"
+          echo "Appending automated Merkle checkpoint leaf and synthesizing deterministic release archive..."
+          npm run kernel-checkpoint-compact
+
+      - name: Upload Hypergrid Checkpoint Release Artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sovereign-hypergrid-checkpoint-${{ github.sha }}
+          path: |
+            release-manifest-v29.0.json
+            codevalai-sovereign-rubicon-core-v29.0.zip
+          retention-days: 14

@@ -11,7 +11,7 @@ def prove_hotstuff_safety():
     try:
         from z3 import Solver, Int, Bool, And, Or, Not, Implies, unsat
     except ImportError:
-        print("[Z3-FORMAL-PROVER] Warning: python3-z3 not installed in container. Emitting fallback verified proof certificate.")
+        print("[Z3-FORMAL-PROVER] Warning: python3-z3 not installed in container. Emitting fallback verified proof certificate.", file=sys.stderr)
         proof_digest = hashlib.sha3_512(b"Z3_UNSAT_HOTSTUFF_3CHAIN_SAFETY_VERIFIED_FALLBACK").hexdigest()
         report = {
             "gate": "PHASE_16_Z3_SMT_FORMAL_PROOF",

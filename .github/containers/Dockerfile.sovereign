@@ -10,11 +10,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     build-essential \
     pkg-config \
+    z3 \
     libz3-dev \
     python3-z3 \
     libgit2-dev \
     nftables \
     iproute2 \
+    libcap2-bin \
     dnsutils \
     jq \
     && curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION} | bash - \

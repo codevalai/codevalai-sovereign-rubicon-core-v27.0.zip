@@ -20,6 +20,9 @@ concurrency:
   group: sovereign-closed-loop-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   sovereign-swarm-execution:
     name: Sovereign 8-Stage Closed-Loop & Invariant Verifier
@@ -28,17 +31,18 @@ jobs:
 
     steps:
       - name: Checkout Sovereign Rubicon-Core Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Setup Node.js 22.x & Corepack
+      - name: Setup Node.js 22.x & Lockfile Cache
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22'
           cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
 
       - name: Install Monorepo & Standalone SDK Dependencies
         run: |
-          npm ci
+          npm ci --legacy-peer-deps
 
       - name: Execute Stage 1-8 Closed-Loop Verification Suite
         run: |
@@ -67,3 +71,12 @@ jobs:
       - name: Generate Cryptographic Release Archive & Verification Audit Report
         run: |
           npx tsx scripts/export-sovereign-release-zip.ts
+
+      - name: Upload Cryptographic Release Manifest & Archive
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sovereign-closed-loop-release-${{ github.sha }}
+          path: |
+            release-manifest-v29.0.json
+            codevalai-sovereign-rubicon-core-v29.0.zip
+          retention-days: 14

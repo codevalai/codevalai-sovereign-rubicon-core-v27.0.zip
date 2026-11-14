@@ -4,9 +4,19 @@ on:
   push:
     branches:
       - main
-      - 'refs/swarm/**'
-      - 'refs/nexus/**'
+      - master
+      - 'swarm/**'
+      - 'nexus/**'
   pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+concurrency:
+  group: sovereign-omni-grid-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   verify-omni-ecosystem-mesh:
@@ -14,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Sovereign Repository with Full Pack & Bitmap Depth
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
 
@@ -22,9 +32,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Run TypeScript Static Type Verification
         run: npm run lint

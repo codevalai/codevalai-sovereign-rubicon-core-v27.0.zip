@@ -56,8 +56,14 @@ function main(): void {
     : { compositeStateRoot: '0x7f7a82d4e8ad501f' };
 
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+  const resolvedStateRoot =
+    existingCert.stateMerkleRoot ??
+    existingCert.compositeStateRoot ??
+    existingCert.stateRoot ??
+    '0x7f7a82d4e8ad501f';
+
   const canonicalPayload = JSON.stringify({
-    root: existingCert.compositeStateRoot ?? existingCert.stateRoot ?? '0x7f7a82d4e8ad501f',
+    root: resolvedStateRoot,
     arch: process.arch,
     epoch: process.env.SOURCE_DATE_EPOCH ?? '0',
   });
@@ -94,7 +100,7 @@ function main(): void {
         seccompProfileDigest: computeDualDigest('/tmp/sovereign-seccomp.json').sha3_512.slice(0, 64),
       },
       verificationGates: {
-        bftFuzzerRoot: existingCert.compositeStateRoot ?? existingCert.stateRoot ?? '0x7f7a82d4e8ad501f',
+        bftFuzzerRoot: resolvedStateRoot,
         z3UnsatCoreVerified: true,
         teeSiliconPolicy: '0x30000 (DEBUG=0, MIGRATE=0, SMT=1)',
       },

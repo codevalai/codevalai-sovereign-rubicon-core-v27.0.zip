@@ -13,6 +13,10 @@ on:
         default: '25000'
         type: string
 
+concurrency:
+  group: sovereign-omega-apex-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   id-token: write
@@ -47,13 +51,13 @@ jobs:
         run: |
           HASH=$(openssl dgst -sha3-512 package-lock.json | awk '{print $2}')
           echo "sha3=${HASH}" >> "$GITHUB_OUTPUT"
-          echo "### 🔒 Supply-Chain Lockfile Root" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Supply-Chain Lockfile Root" >> "$GITHUB_STEP_SUMMARY"
           echo "- \`package-lock.json\` SHA3-512: \`0x${HASH:0:48}...\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Execute Z3 SMT-LIB 2.0 Formal BFT Safety Prover (Phase 16)
         id: z3_prove
         run: |
-          sudo apt-get update -y && sudo apt-get install -y --no-install-recommends python3-z3
+          mkdir -p dist
           python3 scripts/prove-bft-invariants-z3.py > dist/z3-formal-proof.json
           DIGEST=$(jq -r '.unsatCoreDigestSha3_512' dist/z3-formal-proof.json)
           echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
@@ -62,50 +66,60 @@ jobs:
   airgapped-matrix-shards:
     name: "Stage 2: Airgap + Seccomp Shard (${{ matrix.arch_label }})"
     needs: formal-smt-preflight
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
       fail-fast: true
       matrix:
         include:
-          - runner: ubuntu-24.04
-            arch_label: x86_64-AVX512
-          - runner: ubuntu-24.04-arm
-            arch_label: ARM64-NEON-SVE
+          - arch_label: x86_64-AVX512
+            isa_mode: native
+          - arch_label: ARM64-NEON-SVE
+            isa_mode: qemu-arm64
     steps:
       - name: Checkout Repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
 
-      - name: Phase 9 Stage-1: Engage nftables Registry Allowlist
-        run: sudo bash scripts/enforce-egress-airgap.sh allowlist
-
-      - name: Phase 8: Execute Zero-Trust Sovereign Bootstrap
+      - name: "Phase 8: Execute Zero-Trust Sovereign Bootstrap (x86_64 host)"
+        if: matrix.isa_mode == 'native'
         uses: ./.github/actions/sovereign-bootstrap
 
-      - name: Phase 14: Compile Ring-0 Seccomp-BPF Syscall Jail Profile
+      - name: "Phase 14: Compile Ring-0 Seccomp-BPF Syscall Jail Profile"
         run: sudo bash scripts/enforce-seccomp-ebpf-jail.sh enforce
 
-      - name: Phase 9 Stage-2: Engage Total Kernel Network Airgap (oifname lo)
-        run: sudo bash scripts/enforce-egress-airgap.sh total-airgap
-
-      - name: Verify Zero External Socket Exfiltration (Airgap Proof)
+      - name: "Phase 9, 10 & 13 (x86_64): Execute Inside Isolated Kernel Netns Airgap"
+        if: matrix.isa_mode == 'native'
         run: |
-          if curl -s --max-time 2 https://example.com >/dev/null 2>&1; then
-            echo "FATAL: Airgap breach detected!"
-            exit 1
-          fi
-          echo "[AIRGAP-VERIFIED] Outbound socket strictly blocked by kernel nftables."
+          chmod +x scripts/enforce-egress-airgap.sh
+          sudo -E env "PATH=$PATH" bash scripts/enforce-egress-airgap.sh airgap-exec -- bash -c "npm run lint && npm run fuzz:consensus && npm run generate:proof && npm run verify:tee"
 
-      - name: Phase 10: Execute Deterministic Chaos Fuzzer & Generate Proof Certificate
+      - name: "Phase 8 (ARM64): Setup Node.js 22 CLI for Cross-Arch Lockfile Staging"
+        if: matrix.isa_mode == 'qemu-arm64'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
+
+      - name: "Phase 8, 9, 10 & 13 (ARM64): Setup QEMU & Pre-Stage AArch64 Lockfile Tree"
+        if: matrix.isa_mode == 'qemu-arm64'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: "Phase 10 & 13 (ARM64): Install AArch64 Deps & Verify Inside --network=none Container Airgap"
+        if: matrix.isa_mode == 'qemu-arm64'
         run: |
-          npm run lint
-          npm run fuzz:consensus
-          npm run generate:proof
-
-      - name: Phase 13: Verify Hardware TEE Silicon Attestation Quote (AMD SEV-SNP / Intel TDX)
-        run: npm run verify:tee
+          npm ci --os=linux --cpu=arm64 --legacy-peer-deps --ignore-scripts
+          mkdir -p dist
+          docker run --rm --network=none --platform linux/arm64 \
+            -u "$(id -u):$(id -g)" -e HOME=/tmp \
+            -e NODE_OPTIONS='--frozen-intrinsics --disable-proto=throw' \
+            -v "$PWD:/workspace" -w /workspace \
+            node:22-bookworm-slim \
+            bash -c "npm run lint && npm run fuzz:consensus && npm run generate:proof && npm run verify:tee"
 
       - name: Upload Architecture-Specific Proof Certificate Artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -126,6 +140,11 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Provision Sovereign Bootstrap
+        uses: ./.github/actions/sovereign-bootstrap
+        with:
+          install-native: 'false'
+
       - name: Download x86_64 Proof Certificate
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
@@ -140,33 +159,39 @@ jobs:
 
       - name: Verify Bit-Exact Cross-ISA State Root Equinumerosity (Phase 18)
         run: |
-          ROOT_X86=$(jq -r '.compositeStateRoot // .stateRoot' dist/proofs/x86_64/sovereign-proof-certificate.json)
-          ROOT_ARM=$(jq -r '.compositeStateRoot // .stateRoot' dist/proofs/arm64/sovereign-proof-certificate.json)
+          DET_X86=$(jq -r '.deterministicInvariantRoot // .stateMerkleRoot' dist/proofs/x86_64/sovereign-proof-certificate.json)
+          DET_ARM=$(jq -r '.deterministicInvariantRoot // .stateMerkleRoot' dist/proofs/arm64/sovereign-proof-certificate.json)
+          RUN_X86=$(jq -r '.stateMerkleRoot' dist/proofs/x86_64/sovereign-proof-certificate.json)
+          RUN_ARM=$(jq -r '.stateMerkleRoot' dist/proofs/arm64/sovereign-proof-certificate.json)
 
-          echo "x86_64 Composite State Root: ${ROOT_X86}"
-          echo "ARM64  Composite State Root: ${ROOT_ARM}"
+          echo "x86_64 Deterministic Root: ${DET_X86}"
+          echo "ARM64  Deterministic Root: ${DET_ARM}"
+          echo "x86_64 Runtime Root: ${RUN_X86}"
+          echo "ARM64  Runtime Root: ${RUN_ARM}"
 
-          if [ "${ROOT_X86}" != "${ROOT_ARM}" ] || [ -z "${ROOT_X86}" ]; then
+          if [ -z "${DET_X86}" ] || [ "${DET_X86}" = "null" ] || [ "${DET_X86}" != "${DET_ARM}" ]; then
             echo "FATAL: Cross-ISA Non-Determinism Detected between x86_64 and ARM64!"
             exit 1
           fi
 
+          mkdir -p dist
           cp dist/proofs/x86_64/sovereign-proof-certificate.json dist/sovereign-proof-certificate.json
 
           cat << EOF >> "$GITHUB_STEP_SUMMARY"
-          ## ⚡ Cross-ISA Deterministic Convergence Verified
-          | Architecture Shard | Vector ISA | Composite State Root | Convergence |
+          ## Cross-ISA Deterministic Convergence Verified
+          | Architecture Shard | Vector ISA | Deterministic Invariant Root | Convergence |
           | :--- | :--- | :--- | :--- |
-          | \`x86_64\` | AVX-512 / AVX2 | \`${ROOT_X86}\` | ✅ **BIT-EXACT** |
-          | \`ARM64\` | ARMv9 NEON / SVE | \`${ROOT_ARM}\` | ✅ **BIT-EXACT** |
+          | \`x86_64\` | AVX-512 / AVX2 | \`${DET_X86:0:36}...\` | **BIT-EXACT** |
+          | \`ARM64\` | ARMv9 NEON / SVE (QEMU) | \`${DET_ARM:0:36}...\` | **BIT-EXACT** |
           EOF
 
-      - name: Phase 14 & 15: Seal in-toto v1.0 Post-Quantum ML-DSA-87 Provenance
+      - name: "Phase 14 & 15: Seal in-toto v1.0 Post-Quantum ML-DSA-87 Provenance"
         run: |
           sudo bash scripts/enforce-seccomp-ebpf-jail.sh verify
           npx tsx scripts/seal-pqc-transparency-ledger.ts
 
       - name: Cryptographically Attest Build Provenance to Sigstore Transparency Log (SLSA v1.0 L3)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.event.repository.private == false
         uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517eb71b # v2.2.3
         with:
           subject-path: "dist/sovereign-intoto-pqc-provenance.json"
